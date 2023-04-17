@@ -1,0 +1,4 @@
+get ibeis
+try ibeis with raw pics from newpic folder
+join db into one big list
+figure out ibeis api

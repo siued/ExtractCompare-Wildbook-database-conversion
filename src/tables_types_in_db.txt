@@ -1,0 +1,66 @@
+SYSTEM TABLE MSysAccessObjects
+SYSTEM TABLE MSysACEs
+SYSTEM TABLE MSysNameMap
+SYSTEM TABLE MSysNavPaneGroupCategories
+SYSTEM TABLE MSysNavPaneGroups
+SYSTEM TABLE MSysNavPaneGroupToObjects
+SYSTEM TABLE MSysNavPaneObjectIDs
+SYSTEM TABLE MSysObjects
+SYSTEM TABLE MSysQueries
+SYSTEM TABLE MSysRelationships
+TABLE algy
+TABLE aspects
+TABLE AutoMatch_meanings
+TABLE bestranks_overall
+TABLE cells
+TABLE compIDs
+TABLE countranks
+TABLE countranks_by_extension
+TABLE counts
+TABLE countscum
+TABLE DataPath
+TABLE defaultrank
+TABLE distribution
+TABLE distributionLR
+TABLE encounter
+TABLE features
+TABLE IDs
+TABLE image
+TABLE location
+TABLE matched
+TABLE matches
+TABLE mergedranks
+TABLE ModLog
+TABLE nonmatches
+TABLE options
+TABLE Paste Errors
+TABLE Paula_names
+TABLE pretemp
+TABLE ranks
+TABLE ranks_by_extension
+TABLE save_encounter
+TABLE scorelog
+TABLE sighting
+TABLE stats
+TABLE temp
+TABLE transfer
+TABLE typeranks
+VIEW breeding_season_encounters
+VIEW breeding_season_IOM_matches
+VIEW Query10
+VIEW Query11
+VIEW Query12
+VIEW Query4
+VIEW Query5
+VIEW Query6
+VIEW Query7
+VIEW Query9
+VIEW resight
+VIEW SYSTEM_AutoMatch_counts
+VIEW SYSTEM_complib_scores
+VIEW SYSTEM_compnew_corr_scores
+VIEW SYSTEM_ImageLinks
+VIEW SYSTEM_overall_ranks
+VIEW SYSTEM_pending_cells
+VIEW SYSTEM_RankAnims
+VIEW SYSTEM_ToExcel
