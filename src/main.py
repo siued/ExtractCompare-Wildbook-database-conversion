@@ -14,7 +14,7 @@ cursor = conn.cursor()
 # cursor.execute('update DataPath set Localpath = \'C:/Users/Matej/Desktop/Seal-Pattern-Recognition/Field_db/seal_demo/\'')
 # conn.commit()
 
-cursor.execute('select * from IDs')
+cursor.execute('select * from AutoMatch_meanings')
 
 list = cursor.fetchall()
 for row in list:

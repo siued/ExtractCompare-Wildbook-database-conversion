@@ -14,3 +14,10 @@
 - Opened DB in MS Access, found the self-reported table relationships
 - It seems that save_encounters is unrelated to anything, no Ids match
 - Newpic folder contains all the pictures
+
+**18.4**
+- Downloaded the ibeis source
+- Found an online app called WildMe Seal Codex, which uses the IBEIS algorithm
+- Sent a request for access to WildMe to explore whether it might be a better option
+- tried to install ibeis using pip in Linux, errors out
+- trying to run it from the source code on Windows, some apckages arent able to install currently

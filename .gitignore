@@ -3,6 +3,10 @@ Original_Databases_DO_NOT_TOUCH
 Field_db
 Seal_centre_db
 
+# ibeis code
+ibeis-main.zip
+ibeis-main/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
