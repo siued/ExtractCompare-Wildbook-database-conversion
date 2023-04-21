@@ -20,4 +20,9 @@
 - Found an online app called WildMe Seal Codex, which uses the IBEIS algorithm
 - Sent a request for access to WildMe to explore whether it might be a better option
 - tried to install ibeis using pip in Linux, errors out
-- trying to run it from the source code on Windows, some apckages arent able to install currently
+- trying to run it from the source code on Windows, some packages arent able to install currently
+
+**21.4**
+- got IBEIS working on WSL
+- exploring the app
+- there is an option to start a web server, going to look into whether that is the correct way to interface with the API
