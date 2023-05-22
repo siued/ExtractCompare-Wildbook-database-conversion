@@ -1,0 +1,1 @@
+docker container run -p 8081:5000 --name test-db-load-wbia -v C:/Users/Matej/Desktop/database:/data/docker/ wildme/wbia:latest
