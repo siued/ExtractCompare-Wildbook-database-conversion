@@ -1,4 +1,6 @@
-get ibeis
-try ibeis with raw pics from newpic folder
-join db into one big list
-figure out ibeis api
+test different matching algorithms and compare (run graph/complete for testing maybe?)
+EMAIL SEAL PPL
+make gui work
+
+deal with the undetected pictures
+handle docker crashes

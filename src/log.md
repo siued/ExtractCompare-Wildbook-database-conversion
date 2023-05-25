@@ -92,3 +92,19 @@
 - started writing the README for the database conversion code  (main.py)
 - database cleanup - same name can have unknown gender in one place and known in another
 - finished uploading the entire field database and adding all necessary annotation data (2700 images, 2900 annotations, 1250 different seals)
+
+**24.5**
+- meeting with supervisor
+- finished uploading the second database
+- ~400 images are getting no detections, have to look into that
+- realized that i could use the python module instead of a separate docker container, so i can make the entire app in python and just compile it  into an exe
+- tried installing  the python module, getting an error because fcntl doesnt exist on windows
+- won't work, fcntl doesn't exist and therefore wildbook is mac and linux only, back to docker we go
+
+**25.5**
+- found an overleaf template for the thesis
+- started writing the thesis
+- started working with the matching algorithm
+- shared github with supervisor
+- started making the GUI which will be used to upload images to the database
+- GUI is partly generated with the help of chat gpt because it saves time

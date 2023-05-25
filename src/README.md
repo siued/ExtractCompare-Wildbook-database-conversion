@@ -9,11 +9,12 @@ This app takes one or more databases created with the ExtractCompare (EC) tool a
 
 ## The database
 The EC database is a Microsoft Access database. If you are using ExtractCompare, you should know where it is. Alternatively, you can open it with MS Access and find the path to it in the lower left corner as 'path to local files'. 
-To use this software, you will need to export it to an Excel file. In the MS Access interface, click on 'Export  to Excel'. Remember the file location, as you will need it later. 
+To use this software, you will need to export it to an Excel file. In the MS Access interface, click on 'Export  to Excel', then a window should open asking where to save it. The app can be buggy sometimes, so if nothing happens, 
+try clicking on it again. If that doesn't get it to export, close MS Access and then reopen the database. Remember the file location, as you will need it later.
 
 
 ## Usage
-Note that sometimes wildbook crashes during intense workloads. If you are uploading a large database and experience a crash, you will have to restart wildbook and start the upload again. The photos which have already been uploaded will be skipped. 
+Note that sometimes wildbook crashes during intense workloads. If you are uploading a large database and experience a crash, you may have to restart wildbook and start the upload again. The photos which have already been uploaded will be skipped. 
 
 
 ### Wildbook terminology

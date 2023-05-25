@@ -2,10 +2,10 @@ import os
 import requests
 import xlrd
 import json
-
-from PyQt5.QtWidgets import QFileDialog
-
 import util
+
+# This program takes an Excel file of an ExtractCompare database and uploads it to a Wildbook server.
+# The process might take several hours, depending on the size of the database and the computing power of the server.
 
 # terminology:
 # gid - id of an uploaded picture
@@ -21,18 +21,21 @@ import util
 port = str(8081)
 base_url = "http://localhost:" + port + "/"
 
+# TODO: let user input the database name
+save_file = 'scdb.json'
+
 # TODO: make this user inputtable
-db_pic_folder = 'C:/Users/Matej/Desktop/Seal-Pattern-Recognition/Field_db/seal_demo/newpic'
+db_pic_folder = 'C:/Users/Matej/Desktop/Seal-Pattern-Recognition/Seal_centre_db/seal_demo/newpic'
 
 # see if the database was already converted to json, use the Excel export if it hasn't
-if not os.path.exists('db.json'):
+if not os.path.exists(save_file):
     # TODO: make this user inputtable
-    excel_exported_db = 'C:/Users/Matej/Desktop/Seal-Pattern-Recognition/fielddb_export.xls'
+    excel_exported_db = 'C:/Users/Matej/Desktop/Seal-Pattern-Recognition/scdb_export.xls'
 
     workbook = xlrd.open_workbook(excel_exported_db)
     worksheet = workbook.sheet_by_index(0)
 
-    # convert to list of dictionaries, each dict holds info about one seal (one line from the Excel file)
+    # convert to list of records, each record holds info about one seal (one line from the Excel file)
     db = []
     for j in range(1, worksheet.nrows):
         seal_info = {}
@@ -41,7 +44,8 @@ if not os.path.exists('db.json'):
             seal_info[col_name] = worksheet.cell_value(j, i)
         db.append(seal_info)
 else:
-    with open('db.json') as f:
+    print('loading database from %s' % save_file)
+    with open(save_file) as f:
         db = json.load(f)
 
 db = util.fix_unmatched_genders(db)
@@ -49,14 +53,14 @@ db = util.fix_unmatched_genders(db)
 # get locations of all pictures in the database
 for record in db:
     if 'photo_location' not in record:
-        try:
-            record['photo_location'] = str(os.path.join(db_pic_folder, record['photo'])) + '.jpg'
-        except FileNotFoundError:
-            # remove records with missing images
+        loc = str(os.path.join(db_pic_folder, record['photo'])) + '.jpg'
+        if os.path.exists(loc):
+            record['photo_location'] = loc
+        else:
             db.remove(record)
 
 # save the database in a json file for easier loading
-with open('C:/Users/Matej/Desktop/Seal-Pattern-Recognition/src/db.json', 'w') as f:
+with open(save_file, 'w') as f:
     json.dump(db, f, indent=4, separators=(',', ': '))
 
 print('found %s records' % len(db))
@@ -64,6 +68,7 @@ print('starting the upload, this might take a while depending on the number of p
 
 
 def upload_pics():
+    global db
     url = base_url + "api/upload/image"
 
     for record in db:
@@ -71,37 +76,49 @@ def upload_pics():
         if 'gid' in record:
             continue
         # there's no way to keep the image name, it'll be called upload_<timestamp>.jpg in the database
-        files = {'image': open(record['photo_location'], 'rb').read()}
+        try:
+            files = {'image': open(record['photo_location'], 'rb').read()}
+        except FileNotFoundError:
+            print('removing record %s because the picture is missing' % record['ID'])
+            db.remove(record)
+            continue
         res = requests.post(url, files=files)
         assert res.json()['status']['success']
         record['gid'] = res.json()['response']
         # save progress every 50 uploads
         if db.index(record) % 50 == 0:
-            print('uploaded picture %s, saved progress' % i)
+            print('uploaded picture %s, saved progress' % db.index(record))
             # overwrite previous save
-            with open('C:/Users/Matej/Desktop/Seal-Pattern-Recognition/src/db.json', 'w') as f:
+            with open(save_file, 'w') as f:
                 json.dump(db, f, indent=4, separators=(',', ': '))
     return
 
 
+with open(save_file, 'w') as f:
+    json.dump(db, f, indent=4, separators=(',', ': '))
+
 # TODO: add date and other picture metadata
 # TODO: put pictures into imagesets
 
-
 # upload pictures to database
 upload_pics()
+
 gid_list = [record['gid'] for record in db]
 
-# remove duplicate gids
-gid_list = list(set(gid_list))
+# remove records referring to the same picture
+for record in db:
+    if gid_list.count(record['gid']) > 1:
+        # there is no need to check the info, if the records refer to the same picture they match
+        db.remove(record)
+        gid_list.remove(record['gid'])
 
 print('uploaded %s pictures' % len(gid_list))
 print('if this is less than the number of records, that means there were multiple records with the same picture, '
-      'this is normal because ExtractCompare keeps multiple records if one picture  contains multiple aspects of a '
-      'seal (ex. flank and neck)')
+      'this is normal because ExtractCompare keeps multiple records if one picture contains multiple aspects of a '
+      'seal (ex. flank and neck). Also, some records may have been removed because the picture wasn\'t found')
 
 # save the final state
-with open('db.json', 'w') as f:
+with open(save_file, 'w') as f:
     json.dump(db, f, indent=4, separators=(',', ': '))
 
 
@@ -117,25 +134,50 @@ def get_uuids(gid_list):
 # print('uuids: ', uuid_list)
 
 
-def detect_seals(gid_list):
-    # use either lightnet or yolo in the url for different detection NN
+def detect_seals_yolo(gid_list):
     url = base_url + "api/detect/cnn/yolo"
     res = requests.put(url, json={'gid_list': gid_list})
     assert res.json()['status']['success']
     return res.json()['response']
 
 
+def detect_seals_lightnet(gid_list):
+    url = base_url + "api/detect/cnn/lightnet"
+    # split into batches of 5, API likes to crash during large requests
+    batch_size = 5
+    res = []
+    for i in range(0, len(gid_list), batch_size):
+        res += requests.put(url, json={'gid_list': gid_list[i:i + batch_size]}).json()['response']
+    return res
+
+
 # detect seals in the uploaded pictures, get annotation ids of each seal detected
 detect_list = [record['gid'] for record in db if 'aids' not in record]
 if len(detect_list) > 0:
-    print('detecting seals in %s pictures, this might take a while' % len(detect_list))
-    aid_list = detect_seals(detect_list)
+    print('detecting seals in %s pictures using the yolo algorithm, this might take a while. During this phase the '
+          'database web UI will be unavailable due to the detection running in the background. ' % len(detect_list))
+    aid_list = detect_seals_yolo(detect_list)
     # add the annotation ids to the json database save
     zipped_list = list(zip(detect_list, aid_list))
     for gid, aids in zipped_list:
         for record in db:
             if record['gid'] == gid:
                 record['aids'] = aids
+
+detect_list = [record['gid'] for record in db if record['aids'] == []]
+if len(detect_list) > 0:
+    print('detecting seals in %s pictures using the lightnet algorithm, this might take a while. During this phase the '
+          'database web UI will be unavailable due to the detection running in the background. ' % len(detect_list))
+    aid_list = detect_seals_lightnet(detect_list)
+    # add the annotation ids to the json database save
+    zipped_list = list(zip(detect_list, aid_list))
+    for gid, aids in zipped_list:
+        for record in db:
+            if record['gid'] == gid:
+                record['aids'] = aids
+
+with open(save_file, 'w') as f:
+    json.dump(db, f, indent=4, separators=(',', ': '))
 
 # convert list of lists to a regular list
 aid_list_flattened = [aid for record in db for aid in record['aids']]
@@ -221,9 +263,9 @@ def set_data_for_annots():
 
     # set ages in months
     # assuming that pup: 0-3y, juvenile: 3-5y, adult: 5-30y
-    age_min_dict = {'pup': 0, 'juv': 36, 'adult': 60, 'Unknown': -1}
+    age_min_dict = {'pup': 0, 'juv': 36, 'adult': 60, 'Unknown': -1, '': -1}
     age_min_list = []
-    age_max_dict = {'pup': 36, 'juv': 60, 'adult': 360, 'Unknown': -1}
+    age_max_dict = {'pup': 36, 'juv': 60, 'adult': 360, 'Unknown': -1, '' : -1}
     age_max_list = []
     for record in db:
         if len(record['aids']) == 0:
@@ -269,7 +311,7 @@ set_data_for_annots()
 def match_annots():
     #TODO get aid lists of field and sealcentre dbs
     url = base_url + "api/query/chip/dict/simple"
-    res = requests.get(url, json={'qaid_list': aid_list, 'daid_list': aid_list})
+    res = requests.get(url, json={'qaid_list': aid_list, 'daid_list': aid_list, 'verbose': True})
     response = res.json()['response']
     for i in range(len(response)):
         qaid = response[i]['qaid']

@@ -1,5 +1,7 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox
-from PyQt5.QtGui import QPixmap, QImage, QPainter
+from PyQt5.QtCore import QUrl
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, \
+    QMessageBox, QFileDialog, QDialogButtonBox, QCheckBox, QDialog, QToolBar, QAction
+from PyQt5.QtGui import QPixmap, QImage, QPainter, QIcon, QDesktopServices
 import requests
 
 
@@ -13,7 +15,7 @@ class SealRecognitionApp(QWidget):
         # Create widgets
         self.server_label = QLabel("Wildbook Server URL:")
         self.server_input = QLineEdit()
-        self.server_input.setText("https://wildbook.example.com")  # Set a default server URL
+        self.server_input.setText("http://localhost:8081")  # Set a default server URL
         self.upload_button = QPushButton("Upload Images")
         self.upload_button.clicked.connect(self.uploadImages)
 
@@ -24,6 +26,21 @@ class SealRecognitionApp(QWidget):
         layout.addWidget(self.upload_button)
         self.setLayout(layout)
 
+        toolbar = QToolBar()
+        self.addToolBar(toolbar)
+
+        # Create an action for the website button
+        website_action = QAction(QIcon("seal.png"), "Open WBIA", self)
+        website_action.triggered.connect(self.openWebsite)
+
+        # Add the action to the toolbar
+        toolbar.addAction(website_action)
+
+    def openWebsite(self):
+        # Open the website in the default web browser
+        website_url = QUrl("http://localhost:8081")
+        QDesktopServices.openUrl(website_url)
+
     def uploadImages(self):
         # Get the server URL from the input field
         server_url = self.server_input.text()
@@ -31,62 +48,70 @@ class SealRecognitionApp(QWidget):
         # Perform image upload and recognition tasks
         image_urls = self.selectImages()
         if image_urls:
+            gids = []
             try:
                 for url in image_urls:
-                    self.uploadImage(server_url, url)
-                    self.detectImage(server_url)
-                    matches = self.matchImage(server_url)
+                    gids += self.uploadImage(server_url, url)
+                aids = self.detectImage(server_url, gids)
+                matches = self.matchImage(server_url, aids)
 
-                    if matches:
-                        best_match = matches[0]
-                        confirmed = self.confirmMatch(best_match)
-                        if not confirmed:
-                            self.fillSealDetails(best_match)
-                    else:
-                        self.fillSealDetails(None)
+                if matches:
+                    best_match = matches[0]
+                    confirmed = self.confirmMatch(best_match)
+                    if not confirmed:
+                        self.fillSealDetails(best_match)
+                else:
+                    self.fillSealDetails(None)
 
                 self.showResult("Image upload and recognition completed.")
             except requests.exceptions.RequestException:
                 self.showResult("An error occurred during API requests.")
 
     def selectImages(self):
-        # Here you can implement a file selection dialog or any other method to choose the images to upload
-        # Return a list of image URLs or file paths
-        # For example:
-        image_urls = [
-            "https://example.com/image1.jpg",
-            "https://example.com/image2.jpg",
-            "https://example.com/image3.jpg"
-        ]
-        return image_urls
+        # Open a file dialog to select multiple image files
+        file_dialog = QFileDialog()
+        file_dialog.setFileMode(QFileDialog.ExistingFiles)
+        file_dialog.setNameFilter("Image files (*.jpg *.jpeg *.png *.bmp)")
+        if file_dialog.exec_():
+            selected_files = file_dialog.selectedFiles()
+            return selected_files
+        else:
+            return []
 
     def uploadImage(self, server_url, image_url):
         # Perform the image upload using the API endpoint /api/upload/image
         # Use the server URL and the provided image URL or file path
         # For example:
-        response = requests.post(f"{server_url}/api/upload/image", json={"url": image_url})
+        response = requests.post(f"{server_url}/api/upload/image", files={"image": open(image_url).read()})
         if response.status_code == 200:
             print("Image uploaded successfully")
+            gid = response.json()['response']
+            return gid
         else:
             print("Image upload failed")
+            return None
 
-    def detectImage(self, server_url):
+    def detectImage(self, server_url, gid_list):
         # Perform the detection algorithm on the new images using the API endpoint /api/detect/cnn/yolo
         # Use the server URL
         # For example:
-        response = requests.post(f"{server_url}/api/detect/cnn/yolo")
+        response = requests.put(f"{server_url}/api/detect/cnn/yolo", json={'gid_list': gid_list})
         if response.status_code == 200:
             print("Detection completed")
+            aids = zip(gid_list, response.json()['response'])
+            return aids
         else:
             print("Detection failed")
+            return None
 
-    def matchImage(self, server_url):
+    def matchImage(self, server_url, aid_list):
         # Perform the matching algorithm on the new images using the API endpoint /api/query/chip/dict/simple
         # Use the server URL
         # For example:
-        response = requests.post(f"{server_url}/api/query/chip/dict/simple")
+        response = requests.get(f"{server_url}/api/query/chip/dict/simple", json={'qaid_list': aid_list})
         if response.status_code == 200:
-            matches = response.json()
+            matches = response.json()['response']
+            # TODO find highest match
             print(f"Matching completed. Matches: {matches}")
             return matches
         else:
@@ -119,21 +144,21 @@ class SealRecognitionApp(QWidget):
         result = msg_box.exec_()
         return result == QMessageBox.Yes
 
-    def fetchImage(self, image_id):
+    def fetchImage(self, server_url, image_gid):
         # Fetch the image from the server using the API endpoint /api/image/<id>
         # Return the image as a QImage or None if fetching failed
         # For example:
         try:
-            response = requests.get(f"{server_url}/api/image/{image_id}")
+            response = requests.get(f"{server_url}/api/image/{image_gid}")
             if response.status_code == 200:
                 image_data = response.content
                 image = QImage.fromData(image_data)
                 return image
             else:
-                print(f"Failed to fetch image with ID: {image_id}")
+                print(f"Failed to fetch image with ID: {image_gid}")
                 return None
         except requests.exceptions.RequestException as e:
-            print(f"An error occurred while fetching image with ID: {image_id}")
+            print(f"An error occurred while fetching image with ID: {image_gid}")
             print(e)
             return None
 
@@ -149,11 +174,13 @@ class SealRecognitionApp(QWidget):
         # Otherwise, populate the form with the details from the best match
         # For example:
         if best_match:
+            # TODO make the form
             # Populate the form with the best match details
             print("Populating form with best match details")
         else:
             # Display the form for filling in seal details
             print("Displaying form for filling in seal details")
+            self.showSealDetailsForm()
 
     def showResult(self, message):
         # Display a message box with the result
@@ -161,6 +188,71 @@ class SealRecognitionApp(QWidget):
         msg_box.setIcon(QMessageBox.Information)
         msg_box.setText(message)
         msg_box.exec_()
+
+    def showSealDetailsForm(self):
+        # Create a custom dialog box for the seal details form
+        dialog = QDialog()
+        dialog.setWindowTitle("Seal Details")
+        layout = QVBoxLayout(dialog)
+
+        # Create form fields and labels
+        species_label = QLabel("Species:")
+        species_textbox = QLineEdit()
+        layout.addWidget(species_label)
+        layout.addWidget(species_textbox)
+
+        gender_label = QLabel("Gender:")
+        gender_textbox = QLineEdit()
+        layout.addWidget(gender_label)
+        layout.addWidget(gender_textbox)
+
+        age_label = QLabel("Age:")
+        age_textbox = QLineEdit()
+        layout.addWidget(age_label)
+        layout.addWidget(age_textbox)
+
+        viewpoint_label = QLabel("Viewpoint:")
+        viewpoint_textbox = QLineEdit()
+        layout.addWidget(viewpoint_label)
+        layout.addWidget(viewpoint_textbox)
+
+        quality_label = QLabel("Quality:")
+        quality_textbox = QLineEdit()
+        layout.addWidget(quality_label)
+        layout.addWidget(quality_textbox)
+
+        comments_label = QLabel("Comments:")
+        comments_textbox = QLineEdit()
+        layout.addWidget(comments_label)
+        layout.addWidget(comments_textbox)
+
+        tagged_checkbox = QCheckBox("Tagged")
+        layout.addWidget(tagged_checkbox)
+
+        # Create dialog buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(button_box)
+
+        def accept():
+            # Retrieve the values from the form fields when the OK button is clicked
+            form_values = {
+                'species': species_textbox.text(),
+                'gender': gender_textbox.text(),
+                'age': age_textbox.text(),
+                'viewpoint': viewpoint_textbox.text(),
+                'quality': quality_textbox.text(),
+                'comments': comments_textbox.text(),
+                'tagged': 'yes' if tagged_checkbox.isChecked() else 'no'
+            }
+            dialog.close()
+            self.processSealDetails(form_values)
+            # TODO process details
+
+        button_box.accepted.connect(accept)
+        button_box.rejected.connect(dialog.reject)
+
+        # Show the dialog box
+        dialog.exec_()
 
 if __name__ == "__main__":
     app = QApplication([])
