@@ -247,8 +247,8 @@ def set_data_for_annots():
             # more than one seal detected in the picture, unsure which one the original db is referring to
             gender_list += ['unknown'] * len(record['aids'])
     # enum: 0: female, 1: male, 2: unknown
+    genders = {'female': 0, 'male': 1, 'unknown': 2, '': 2}
     for i in range(len(gender_list)):
-        genders = {'female': 0, 'male': 1, 'unknown': 2, '': 2}
         gender_list[i] = genders[gender_list[i]]
     res = requests.put(url, json={'aid_list': aid_list_flattened, 'name_sex_list': gender_list})
     assert res.json()['status']['success']

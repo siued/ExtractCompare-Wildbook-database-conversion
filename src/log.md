@@ -108,3 +108,10 @@
 - shared github with supervisor
 - started making the GUI which will be used to upload images to the database
 - GUI is partly generated with the help of chat gpt because it saves time
+
+**26.5**
+- working on GUI
+- after initial preprocessing of the data on the first few matching API calls  which only happens once and gets cached, matching is quite fast (5s for 2 vs 2000 images)
+
+**28.5**
+- working on GUI
