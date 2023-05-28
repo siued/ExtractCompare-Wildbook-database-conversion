@@ -115,3 +115,8 @@
 
 **28.5**
 - working on GUI
+- reading HotSpotter algorithm research paper
+- reading wildbook source code to find algorithm configurationf lags because they aren't listed anywhere
+- made a list of the config flags found, though they were found mostly in tests or directly inside the codebase
+- started testing config flags to see if they even work: vsone throws errors, vsmany is the standard algorithm, smk is a different algorith i think
+- other flags like fg_on and sv_on do give different results, so they will need to be tested

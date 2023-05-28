@@ -7,6 +7,7 @@ import requests
 
 class SealRecognitionApp(QWidget):
     server_url: str
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Seal Pattern Recognition")
@@ -56,6 +57,7 @@ class SealRecognitionApp(QWidget):
 
                 # returns zipped list: [gid, [aid]]
                 aids = self.detectImage(self.server_url, gids)
+                # TODO check if any annots were detected, deal with that
 
                 matches = []
                 for gid, aids in aids:
@@ -75,10 +77,11 @@ class SealRecognitionApp(QWidget):
                             confirmed = self.confirmMatch(qaid, best_match_aid)
                             if not confirmed:
                                 self.fillSealDetails(qaid, best_match_aid)
+                            else:
+                                self.fillSealDetails(qaid, None)
                 else:
                     for gid, aids in aids:
                         for aid in aids:
-                            #   todo: maybe pass in the gid and show entire picture?
                             self.fillSealDetails(aid, None)
 
                 self.showResult("Image upload and recognition completed.")
@@ -122,10 +125,12 @@ class SealRecognitionApp(QWidget):
             return None
 
     def matchImage(self, server_url, aid_list):
+        # First get the list of all annotations using the API endpoint /api/annot
+        res = requests.get(f"{server_url}/api/annot")
+        assert res.status_code == 200
+        daid_list = res.json()['response']
         # Perform the matching algorithm on the new images using the API endpoint /api/query/chip/dict/simple
-        # Use the server URL
-        # For example:
-        response = requests.get(f"{server_url}/api/query/chip/dict/simple", json={'qaid_list': aid_list})
+        response = requests.get(f"{server_url}/api/query/chip/dict/simple", json={'qaid_list': aid_list, 'daid_list': daid_list})
         if response.status_code == 200:
             matches = response.json()['response']
             print(f"Matching completed. Matches: {matches}")
@@ -373,6 +378,7 @@ class SealRecognitionApp(QWidget):
         assert res.json()['status']['success']
 
         print('done')
+        self.showResult('Successfully updated the details for annotation with ID: ' + str(aid))
 
 
 if __name__ == "__main__":
