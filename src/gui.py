@@ -1,4 +1,6 @@
-from PyQt5.QtCore import QUrl, Qt
+import base64
+
+from PyQt5.QtCore import QUrl, Qt, QByteArray
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, \
     QMessageBox, QFileDialog, QDialogButtonBox, QCheckBox, QDialog, QToolBar, QAction, QMainWindow, QComboBox
 from PyQt5.QtGui import QPixmap, QImage, QPainter, QIcon, QDesktopServices
@@ -17,7 +19,7 @@ class SealRecognitionApp(QWidget):
         # Create widgets
         self.server_label = QLabel("Wildbook Server URL:")
         self.server_input = QLineEdit()
-        self.server_input.setText("http://localhost:8081")  # Set a default server URL
+        self.server_input.setText("http://localhost:8080")  # Set a default server URL
         self.upload_button = QPushButton("Upload Images")
         self.upload_button.clicked.connect(self.uploadImages)
         self.toolbar = QToolBar("Toolbar")
@@ -32,12 +34,12 @@ class SealRecognitionApp(QWidget):
 
         # Create an action for the website button
         website_action = QAction(QIcon("seal.png"), "Open WBIA", self)
-        website_action.triggered.connect(self.openWebsite)
+        website_action.triggered.connect(self.openWildbook)
 
         # Add the action to the toolbar
         self.toolbar.addAction(website_action)
 
-    def openWebsite(self):
+    def openWildbook(self):
         # Open the website in the default web browser
         website_url = QUrl(self.server_input.text())
         QDesktopServices.openUrl(website_url)
@@ -53,39 +55,44 @@ class SealRecognitionApp(QWidget):
             try:
                 gids = []
                 for url in image_urls:
-                    gids += self.uploadImage(self.server_url, url)
+                    gids.append(self.uploadImage(self.server_url, url))
 
                 # returns zipped list: [gid, [aid]]
-                aids = self.detectImage(self.server_url, gids)
+                aids_list = self.detectImage(self.server_url, gids)
+                print(aids_list)
+
+                for gid, aids in aids_list:
+                    if not aids:
+                        print('no annotations found for image number ' + str(gid))
                 # TODO check if any annots were detected, deal with that
 
-                matches = []
-                for gid, aids in aids:
-                    matches += gid, aids, self.matchImage(self.server_url, aids)
+                matches_list = []
+                for gid, aids in aids_list:
+                    matches_list.append((gid, aids, self.matchImage(self.server_url, aids)))
 
-                # Todo add match threshold?
-                if matches:
-                    for gid, aids, matches in matches:
+                if matches_list:
+                    for gid, aids, matches in matches_list:
                         for match in matches:
                             qaid = match['qaid']
-                            match_list = match['daid_list']
+                            daid_list = match['daid_list']
                             score_list = match['score_list']
                             best_match_index = score_list.index(max(score_list))
-                            print('qaid: ' + str(qaid) + ', best match: ' + str(match_list[best_match_index]) +
+                            print('qaid: ' + str(qaid) + ', best match: ' + str(daid_list[best_match_index]) +
                                   ', score: ' + str(max(score_list)))
-                            best_match_aid = matches[0]
-                            confirmed = self.confirmMatch(qaid, best_match_aid)
-                            if not confirmed:
+                            best_match_aid = daid_list[best_match_index]
+                            confirmed = self.confirmMatch(qaid, best_match_aid, max(score_list))
+                            print('confirmed: ' + str(confirmed))
+                            if confirmed:
                                 self.fillSealDetails(qaid, best_match_aid)
                             else:
-                                self.fillSealDetails(qaid, None)
+                                self.fillSealDetails(qaid)
                 else:
-                    for gid, aids in aids:
+                    for gid, aids in aids_list:
                         for aid in aids:
-                            self.fillSealDetails(aid, None)
+                            self.fillSealDetails(aid)
 
-                self.showResult("Image upload and recognition completed.")
-            except requests.exceptions.RequestException:
+            except requests.exceptions.RequestException as e:
+                print(e)
                 self.showResult("An error occurred during API requests.")
 
     def selectImages(self):
@@ -103,7 +110,8 @@ class SealRecognitionApp(QWidget):
         # Perform the image upload using the API endpoint /api/upload/image
         # Use the server URL and the provided image URL or file path
         # For example:
-        response = requests.post(f"{server_url}/api/upload/image", files={"image": open(image_path).read()})
+        print(f"Uploading image {image_path}")
+        response = requests.post(f"{server_url}/api/upload/image", files={"image": open(image_path, 'rb').read()})
         if response.status_code == 200:
             print("Image uploaded successfully")
             return response.json()['response']
@@ -118,7 +126,7 @@ class SealRecognitionApp(QWidget):
         response = requests.put(f"{server_url}/api/detect/cnn/yolo", json={'gid_list': gid_list})
         if response.status_code == 200:
             print("Detection completed")
-            aids = zip(gid_list, response.json()['response'])
+            aids = list(zip(gid_list, response.json()['response']))
             return aids
         else:
             print("Detection failed")
@@ -133,19 +141,25 @@ class SealRecognitionApp(QWidget):
         response = requests.get(f"{server_url}/api/query/chip/dict/simple", json={'qaid_list': aid_list, 'daid_list': daid_list})
         if response.status_code == 200:
             matches = response.json()['response']
-            print(f"Matching completed. Matches: {matches}")
+            print(f"Matching completed. Matches: {matches}\n")
             return matches
         else:
             print("Matching failed")
             return None
 
-    def confirmMatch(self, qaid, best_match):
+    def confirmMatch(self, qaid, best_match, score):
         # Display the best match to the user and let them confirm if it's a match or not
         # Return True if confirmed, False otherwise
-        # For example:
-        msg_box = QMessageBox()
-        msg_box.setIcon(QMessageBox.Question)
-        msg_box.setText(f"Best Match: {best_match}")
+
+        dialog = QDialog()
+        dialog.setWindowTitle("Confirm Match")
+        dialog.setMinimumSize(800, 400)
+
+        layout = QVBoxLayout()
+
+        # Display the best match text
+        match_label = QLabel(f"Best Match: {best_match}, score: {score}")
+        layout.addWidget(match_label)
 
         # Fetch and display the images
         image1 = self.fetchImage(qaid)
@@ -154,16 +168,29 @@ class SealRecognitionApp(QWidget):
             image1_label = QLabel()
             image2_label = QLabel()
 
-            # Display the images in the message box
+            # Display the images in the labels
             self.setPixmapFromImage(image1_label, image1)
             self.setPixmapFromImage(image2_label, image2)
-            msg_box.layout().addWidget(image1_label)
-            msg_box.layout().addWidget(image2_label)
 
-        msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        msg_box.setDefaultButton(QMessageBox.Yes)
-        result = msg_box.exec_()
-        return result == QMessageBox.Yes
+            # Add the image labels to the layout
+            layout.addWidget(image1_label)
+            layout.addWidget(image2_label)
+
+        # Create buttons for confirmation
+        confirm_button = QPushButton("Confirm")
+        cancel_button = QPushButton("Reject")
+        layout.addWidget(confirm_button)
+        layout.addWidget(cancel_button)
+
+        # Connect button signals
+        confirm_button.clicked.connect(dialog.accept)
+        cancel_button.clicked.connect(dialog.reject)
+
+        dialog.setLayout(layout)
+
+        # Execute the dialog and return the result
+        result = dialog.exec_()
+        return result == QDialog.Accepted
 
     def fetchImage(self, annot_aid):
         # Fetch the image from the server using the API endpoint /api/image/<id>
@@ -173,8 +200,11 @@ class SealRecognitionApp(QWidget):
         try:
             response = requests.get(f"{self.server_url}/api/annot/{annot_aid}")
             if response.status_code == 200:
-                image_data = response.content
-                image = QImage.fromData(image_data)
+                # wildbook returns all image requests as base64 encoded jpeg
+                image_data = response.json()['response']
+                base64_string = image_data.split(',')[1]
+                image_bytes = base64.b64decode(base64_string)
+                image = QImage.fromData(image_bytes, "JPEG")
                 return image
             else:
                 print(f"Failed to fetch annot with ID: {annot_aid}")
@@ -189,12 +219,12 @@ class SealRecognitionApp(QWidget):
         pixmap = QPixmap.fromImage(image)
         label.setPixmap(pixmap)
         label.setScaledContents(True)
-        label.setMaximumSize(400, 400)
 
-    def fillSealDetails(self, qaid, best_match):
+    def fillSealDetails(self, qaid, best_match=None):
         # If no match, prompt the user to fill in the seal details using a form
         # Otherwise, populate the form with the details from the best match
         # For example:
+        print(best_match)
         if best_match:
             # Populate the form with the best match details
             print("Populating form with best match details")
@@ -208,6 +238,7 @@ class SealRecognitionApp(QWidget):
     def showResult(self, message):
         # Display a message box with the result
         msg_box = QMessageBox()
+        msg_box.setWindowTitle("Message")
         msg_box.setIcon(QMessageBox.Information)
         msg_box.setText(message)
         msg_box.exec_()
@@ -225,27 +256,20 @@ class SealRecognitionApp(QWidget):
 
         gender_label = QLabel("Gender:")
         gender_dropdown = QComboBox()
-        gender_dropdown.addItem('female')
-        gender_dropdown.addItem('male')
-        gender_dropdown.addItem('unknown')
+        gender_dropdown.addItems(['female', 'male', 'unknown'])
         layout.addWidget(gender_label)
         layout.addWidget(gender_dropdown)
 
         age_label = QLabel("Age:")
         # make a dropdown menu
         age_dropdown = QComboBox()
-        age_dropdown.addItem("pup")
-        age_dropdown.addItem("juv")
-        age_dropdown.addItem("adult")
+        age_dropdown.addItems(["pup", "juv", "adult"])
         layout.addWidget(age_label)
         layout.addWidget(age_dropdown)
 
         viewpoint_label = QLabel("Viewpoint:")
         viewpoint_dropdown = QComboBox()
-        viewpoint_dropdown.addItem("left")
-        viewpoint_dropdown.addItem("right")
-        viewpoint_dropdown.addItem("bottom")
-        viewpoint_dropdown.addItem("other")
+        viewpoint_dropdown.addItems(["left", "right", "down", "up", "unknown"])
         layout.addWidget(viewpoint_label)
         layout.addWidget(viewpoint_dropdown)
 
@@ -257,6 +281,7 @@ class SealRecognitionApp(QWidget):
         tagged_checkbox = QCheckBox("Tagged")
         layout.addWidget(tagged_checkbox)
 
+        # Populate the form fields with the details from the best match if available
         if details != {}:
             name_textbox.setText(details['name'])
             gender_dropdown.setCurrentText(details['gender'])
@@ -273,9 +298,9 @@ class SealRecognitionApp(QWidget):
             form_values = {
                 'name': name_textbox.text(),
                 'species': 'harbour_seal',
-                'gender': gender_dropdown.text(),
-                'age': age_dropdown.text(),
-                'viewpoint': viewpoint_dropdown.text(),
+                'gender': gender_dropdown.currentText(),
+                'age': age_dropdown.currentText(),
+                'viewpoint': viewpoint_dropdown.currentText(),
                 'quality': 'excellent',
                 'comments': comments_textbox.text(),
                 'tagged': 'yes' if tagged_checkbox.isChecked() else 'no'
@@ -296,7 +321,8 @@ class SealRecognitionApp(QWidget):
         url = f"{self.server_url}/api/annot/sex"
         res = requests.get(url, json={'aid_list': [aid]})
         assert res.json()['status']['success']
-        seal_details['gender'] = res.json()['response'][0]
+        gender = res.json()['response'][0]
+        seal_details['gender'] = 'female' if gender == 0 else 'male' if gender == 1 else 'unknown'
 
         url = f"{self.server_url}/api/annot/age/months/min"
         res = requests.get(url, json={'aid_list': [aid]})
@@ -308,7 +334,7 @@ class SealRecognitionApp(QWidget):
         assert res.json()['status']['success']
         seal_details['age']['max'] = res.json()['response'][0]
 
-        url = f"{self.server_url}/api/annot/name"
+        url = f"{self.server_url}/api/annot/name/text"
         res = requests.get(url, json={'aid_list': [aid]})
         assert res.json()['status']['success']
         seal_details['name'] = res.json()['response'][0]
@@ -337,7 +363,8 @@ class SealRecognitionApp(QWidget):
 
         # add comments, append whether the seal is tagged or not to the end of each comment
         url = f"{self.server_url}/api/annot/note"
-        res = requests.put(url, json={'aid_list': [aid], 'notes_list': form_values['comments'] + ', tagged: ' + form_values['tagged']})
+        comment = form_values['comments'] + ', tagged: ' + form_values['tagged']
+        res = requests.put(url, json={'aid_list': [aid], 'notes_list': [comment]})
         assert res.json()['status']['success']
 
         # set species
@@ -364,17 +391,18 @@ class SealRecognitionApp(QWidget):
         age_max_dict = {'pup': 36, 'juv': 60, 'adult': 360, 'Unknown': -1, '': -1}
 
         url = f"{self.server_url}/api/annot/age/months/min"
-        res = requests.put(url, json={'aid_list': [aid], 'annot_age_months_est_min_list': age_min_dict[form_values['age']]})
+        age = age_min_dict[form_values['age']]
+        res = requests.put(url, json={'aid_list': [aid], 'annot_age_months_est_min_list': [age]})
         assert res.json()['status']['success']
 
         url = f"{self.server_url}/api/annot/age/months/max"
-        res = requests.put(url, json={'aid_list': [aid], 'annot_age_months_est_max_list': age_max_dict[form_values['age']]})
+        age = age_max_dict[form_values['age']]
+        res = requests.put(url, json={'aid_list': [aid], 'annot_age_months_est_max_list': [age]})
         assert res.json()['status']['success']
 
         # set viewpoint
         url = f"{self.server_url}/api/annot/viewpoint"
-        viewpoint_dict = {'L': 'left', 'R': 'right', 'M': 'bottom', '': 'unspecified'}
-        res = requests.put(url, json={'aid_list': [aid], 'viewpoint_list': form_values['viewpoint']})
+        res = requests.put(url, json={'aid_list': [aid], 'viewpoint_list': [form_values['viewpoint']]})
         assert res.json()['status']['success']
 
         print('done')

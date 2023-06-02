@@ -289,7 +289,7 @@ def set_data_for_annots():
 
     # set viewpoint
     url = base_url + "api/annot/viewpoint"
-    viewpoint_dict = {'L': 'left', 'R': 'right', 'M': 'bottom', '': 'unspecified'}
+    viewpoint_dict = {'L': 'left', 'R': 'right', 'M': 'down', '': 'unknown'}
     viewpoint_list = []
     for record in db:
         viewpoint = viewpoint_dict[record['side']]
@@ -309,7 +309,6 @@ set_data_for_annots()
 
 
 def match_annots():
-    #TODO get aid lists of field and sealcentre dbs
     url = base_url + "api/query/chip/dict/simple"
     res = requests.get(url, json={'qaid_list': aid_list, 'daid_list': aid_list, 'verbose': True})
     response = res.json()['response']

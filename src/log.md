@@ -99,7 +99,7 @@
 - ~400 images are getting no detections, have to look into that
 - realized that i could use the python module instead of a separate docker container, so i can make the entire app in python and just compile it  into an exe
 - tried installing  the python module, getting an error because fcntl doesnt exist on windows
-- won't work, fcntl doesn't exist and therefore wildbook is mac and linux only, back to docker we go
+- won't work, fcntl library doesn't exist on windows and therefore wildbook is mac and linux only, back to docker we go
 
 **25.5**
 - found an overleaf template for the thesis
@@ -116,7 +116,16 @@
 **28.5**
 - working on GUI
 - reading HotSpotter algorithm research paper
-- reading wildbook source code to find algorithm configurationf lags because they aren't listed anywhere
+- reading wildbook source code to find algorithm configuration flags because they aren't listed anywhere
 - made a list of the config flags found, though they were found mostly in tests or directly inside the codebase
 - started testing config flags to see if they even work: vsone throws errors, vsmany is the standard algorithm, smk is a different algorith i think
 - other flags like fg_on and sv_on do give different results, so they will need to be tested
+
+**29.5**
+- it's my birthday :)
+- started working on testing the algorithm configuration flags
+- 600 pics from field db aren't getting any detections, have to look into that
+- testing the algorithm will take a very long time, will have to look into reducing the number of images being tested in order to get any results in time
+
+**2.6**
+- working on gui, debugging and testing
