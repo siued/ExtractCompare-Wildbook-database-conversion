@@ -323,7 +323,7 @@ def match_annots():
 
 # match_annots()
 
-# api/query/chip to compare list vs db_list, use chip/dict/simple, because chip and chip/dict throw internal errors (unrelated to the matching process, caused by returning incorrect values)
+# api/query/chip to compare list vs db_list, use chip/dict/simple, because chip and chip/dict throw internal errors (unrelated to the matching process, caused by returning incorrect value types)
 # /api/query/graph/complete/ to compare everything against everything, returns a graph with weights per uuid pair - a way to use query/chip indirectly, but compares all to all, pass arg k to get more/less than 5 best matches per annot
 # /api/review/query/chip/best/ tries to match an annot against everything, then shows the best match for review - useful for adding new images, doesnt give score, only gives uuid of best match and name etc
 # NOUSE /api/review/query/graph/ for reviewing graph in html, needs a cm_list so can't be used due to query/chip not working

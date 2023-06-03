@@ -129,3 +129,8 @@
 
 **2.6**
 - working on gui, debugging and testing
+
+**3.6**
+- working on docker integration to abstract it away from the user
+- created a docker_util file with all the docker functions
+- added docker util into the gui code, now the gui starts and stops the backend on its own

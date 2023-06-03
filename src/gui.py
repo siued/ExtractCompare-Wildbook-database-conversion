@@ -2,9 +2,11 @@ import base64
 
 from PyQt5.QtCore import QUrl, Qt, QByteArray
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, \
-    QMessageBox, QFileDialog, QDialogButtonBox, QCheckBox, QDialog, QToolBar, QAction, QMainWindow, QComboBox
+    QMessageBox, QFileDialog, QDialogButtonBox, QCheckBox, QDialog, QToolBar, QAction, QMainWindow, QComboBox, \
+    QProgressBar
 from PyQt5.QtGui import QPixmap, QImage, QPainter, QIcon, QDesktopServices
 import requests
+import docker_util
 
 
 class SealRecognitionApp(QWidget):
@@ -13,6 +15,7 @@ class SealRecognitionApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Seal Pattern Recognition")
+        self.resize(200, 150)
         self.initUI()
 
     def initUI(self):
@@ -59,7 +62,6 @@ class SealRecognitionApp(QWidget):
 
                 # returns zipped list: [gid, [aid]]
                 aids_list = self.detectImage(self.server_url, gids)
-                print(aids_list)
 
                 for gid, aids in aids_list:
                     if not aids:
@@ -71,6 +73,7 @@ class SealRecognitionApp(QWidget):
                     matches_list.append((gid, aids, self.matchImage(self.server_url, aids)))
 
                 if matches_list:
+                    print('Matches found:')
                     for gid, aids, matches in matches_list:
                         for match in matches:
                             qaid = match['qaid']
@@ -81,7 +84,7 @@ class SealRecognitionApp(QWidget):
                                   ', score: ' + str(max(score_list)))
                             best_match_aid = daid_list[best_match_index]
                             confirmed = self.confirmMatch(qaid, best_match_aid, max(score_list))
-                            print('confirmed: ' + str(confirmed))
+                            print('Match confirmed' if confirmed else 'Match rejected')
                             if confirmed:
                                 self.fillSealDetails(qaid, best_match_aid)
                             else:
@@ -120,6 +123,7 @@ class SealRecognitionApp(QWidget):
             return None
 
     def detectImage(self, server_url, gid_list):
+        print("Performing detection")
         # Perform the detection algorithm on the new images using the API endpoint /api/detect/cnn/yolo
         # Use the server URL
         # For example:
@@ -133,15 +137,24 @@ class SealRecognitionApp(QWidget):
             return None
 
     def matchImage(self, server_url, aid_list):
+        print("Performing matching")
         # First get the list of all annotations using the API endpoint /api/annot
         res = requests.get(f"{server_url}/api/annot")
         assert res.status_code == 200
         daid_list = res.json()['response']
         # Perform the matching algorithm on the new images using the API endpoint /api/query/chip/dict/simple
-        response = requests.get(f"{server_url}/api/query/chip/dict/simple", json={'qaid_list': aid_list, 'daid_list': daid_list})
+        # The server sometimes crashes during the matching procedure, so the loop handles that
+        # The matches computed up to the crash get cached in Wildbook, so this should never resu;lt
+        while True:
+            try:
+                response = requests.get(f"{server_url}/api/query/chip/dict/simple", json={'qaid_list': aid_list, 'daid_list': daid_list})
+                break
+            except requests.exceptions.RequestException as e:
+                print('Backend crashed while trying to match image, restarting and retrying')
+                docker_util.ensure_docker_wbia()
         if response.status_code == 200:
             matches = response.json()['response']
-            print(f"Matching completed. Matches: {matches}\n")
+            print(f"Matching completed.")
             return matches
         else:
             print("Matching failed")
@@ -224,7 +237,6 @@ class SealRecognitionApp(QWidget):
         # If no match, prompt the user to fill in the seal details using a form
         # Otherwise, populate the form with the details from the best match
         # For example:
-        print(best_match)
         if best_match:
             # Populate the form with the best match details
             print("Populating form with best match details")
@@ -248,6 +260,12 @@ class SealRecognitionApp(QWidget):
         dialog = QDialog()
         dialog.setWindowTitle("Seal Details")
         layout = QVBoxLayout(dialog)
+
+        image = self.fetchImage(aid)
+        if image:
+            image_label = QLabel()
+            self.setPixmapFromImage(image_label, image)
+            layout.addWidget(image_label)
 
         name_label = QLabel("Name:")
         name_textbox = QLineEdit()
@@ -408,8 +426,18 @@ class SealRecognitionApp(QWidget):
         print('done')
         self.showResult('Successfully updated the details for annotation with ID: ' + str(aid))
 
+    def closeEvent(self, event):
+        # TODO: uncomment for production
+        docker_util.stop_wbia_container()
+        self.close()
+        super().closeEvent(event)
+
 
 if __name__ == "__main__":
+    # TODO change port + make sure names work
+    if not docker_util.ensure_docker_wbia(8080):
+        print('Please make sure Docker Desktop is running and try again.')
+        exit(1)
     app = QApplication([])
     seal_recognition_app = SealRecognitionApp()
     seal_recognition_app.show()

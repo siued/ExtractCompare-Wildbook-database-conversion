@@ -38,5 +38,5 @@ print('name match count: ' + str(name_match_count) + ' out of ' + str(len(match_
 
 # no args: 892 empty, 375/598 name matches
 # proot=smk: 3 empty, 242/1487 name matches - takes longer (did not measure)
-# sv_on=True, fg_on=True: was  cached, clearly  those are the default
+# sv_on=True, fg_on=True: was cached, clearly those are the default
 # sv_on=False, fg_on=False:
