@@ -134,3 +134,28 @@
 - working on docker integration to abstract it away from the user
 - created a docker_util file with all the docker functions
 - added docker util into the gui code, now the gui starts and stops the backend on its own
+
+**4.6**
+- running more algorithm tests
+- looking into using pyinstaller to compile the python code into an executable
+- working on making requirements.txt for the project
+- dealt with some Docker issues
+- started writing thesis
+
+**5.6**
+- had to reupload the database because the docker container was being weird
+- wrote a bit of thesis
+- made a requirements.txt file
+- looking into how to set an entire image as an annotation manually for the ones where seals dont get detected
+- figured ^ out, added it to the database import code
+
+**6.6**
+- made the gui add an annotation over the whole image if no detections are found
+- finished reuploading database
+- writing thesis - EC, wildbook sections
+
+**7.6**
+- writing thesis - EC, conversion, wildbook sections
+- debugging gui
+- added a button to the gui to open the wildbook web UI
+- will have to look into how to export the docker container's data

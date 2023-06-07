@@ -18,7 +18,7 @@ Note that sometimes wildbook crashes during intense workloads. If you are upload
 
 
 ### Wildbook terminology
-- gid- id of an uploaded picture
+- gid - id of an uploaded picture
 - annotation - a section of an image with an object of interest in it (seal in this case)
 - aid - id of an annotation in a picture  (many-to-one relationship with gid)
 - uuid - unique id of any object in the database (ex. annotation, picture, graph, job, etc.)

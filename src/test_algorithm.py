@@ -1,4 +1,4 @@
-# load the field database,  assume the names are labelled correctly
+# load the field database, assume the names are labelled correctly
 
 import json
 import requests
@@ -12,7 +12,7 @@ name_dict = dict(aid_name_list)
 
 aid_list = [aid for aid, name in aid_name_list]
 
-res = requests.get("http://localhost:8081/api/query/chip/dict/simple", json={'daid_list': aid_list, 'qaid_list': aid_list, 'cfgdict': {'sv_on': False, 'fg_on': False}})
+res = requests.get("http://localhost:8082/api/query/chip/dict/simple", json={'daid_list': aid_list, 'qaid_list': aid_list, 'cfgdict': {'sv_on': False, 'fg_on': False}})
 matches = res.json()['response']
 
 match_aid_list = []
@@ -38,5 +38,5 @@ print('name match count: ' + str(name_match_count) + ' out of ' + str(len(match_
 
 # no args: 892 empty, 375/598 name matches
 # proot=smk: 3 empty, 242/1487 name matches - takes longer (did not measure)
-# sv_on=True, fg_on=True: was cached, clearly those are the default
+# sv_on=True, fg_on=True: was cached, clearly those are the default (so result same as no args)
 # sv_on=False, fg_on=False:

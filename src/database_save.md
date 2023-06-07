@@ -9,5 +9,5 @@ To save the database which was created in a Docker container, download the datab
 8. store in  a safe place :)
 
 To create a new Docker container using  the saved database, run the following command:
-```docker container run -p <external_port>:5000 --name wildbook-ia -v full/path/to/database/db/:/data/db/ wildme/wbia:latest```
+```docker container run -d -p <external_port>:5000 --name wildbook-ia -v full/path/to/database/db/:/data/db/ wildme/wbia:latest```
 where <external_port> is the port on the host machine which will be used to access the web UI and API, and full/path/to/database/db/ is the full path to the database folder on the host machine.

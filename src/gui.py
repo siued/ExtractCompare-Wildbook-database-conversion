@@ -9,6 +9,50 @@ import requests
 import docker_util
 
 
+def get_uuids(gid_list):
+    url = "http://localhost:8081/api/image/uuid"
+    res = requests.get(url, json={'gid_list': gid_list})
+    assert res.json()['status']['success']
+    uuid_list = [uuid['__UUID__'] for uuid in res.json()['response']]
+    return uuid_list
+
+
+def add_annots_undetected_images(gid_list, server_url):
+    # need the image uuid to add an annotation
+    image_uuid_list = get_uuids(gid_list)
+
+    # get picture dimensions
+    url = f"{server_url}/api/image/height"
+    res = requests.get(url, json={'gid_list': gid_list})
+    assert res.json()['status']['success']
+    height_list = res.json()['response']
+
+    url = f"{server_url}/api/image/width"
+    res = requests.get(url, json={'gid_list': gid_list})
+    assert res.json()['status']['success']
+    width_list = res.json()['response']
+
+    # add annotation over the entire picture
+    url = f"{server_url}/api/annot/json"
+    res = requests.post(url,
+                        json={'image_uuid_list': image_uuid_list,
+                              'annot_bbox_list': [(0, 0, width, height) for width, height in
+                                                  zip(width_list, height_list)],
+                              'annot_theta_list': [0]})
+    assert res.json()['status']['success']
+    annot_uuid_list = [annot['__UUID__'] for annot in res.json()['response']]
+
+    # get the aid of the annotation and add it to the json database save
+    url = f"{server_url}/api/annot/rowid/uuid"
+    res = requests.get(url, json={'uuid_list': annot_uuid_list})
+    assert res.json()['status']['success']
+
+    # add the annotation ids to the json database save
+    zipped_list = list(zip(gid_list, res.json()['response']))
+
+    print('Added full-picture annotations to all pictures where nothing was detected')
+    return zipped_list
+
 class SealRecognitionApp(QWidget):
     server_url: str
 
@@ -22,7 +66,7 @@ class SealRecognitionApp(QWidget):
         # Create widgets
         self.server_label = QLabel("Wildbook Server URL:")
         self.server_input = QLineEdit()
-        self.server_input.setText("http://localhost:8080")  # Set a default server URL
+        self.server_input.setText("http://localhost:8081")  # Set a default server URL
         self.upload_button = QPushButton("Upload Images")
         self.upload_button.clicked.connect(self.uploadImages)
         self.toolbar = QToolBar("Toolbar")
@@ -63,19 +107,21 @@ class SealRecognitionApp(QWidget):
                 # returns zipped list: [gid, [aid]]
                 aids_list = self.detectImage(self.server_url, gids)
 
-                for gid, aids in aids_list:
-                    if not aids:
-                        print('no annotations found for image number ' + str(gid))
-                # TODO check if any annots were detected, deal with that
+                # in images where no annot was detected, add a full-picture annotation
+                undetected_gid_list = [gid for gid, aids in aids_list if not aids]
+                aids_list = [(gid, aids) for gid, aids in aids_list if aids]
+                if undetected_gid_list:
+                    aids_list += add_annots_undetected_images(undetected_gid_list, self.server_url)
 
                 matches_list = []
                 for gid, aids in aids_list:
                     matches_list.append((gid, aids, self.matchImage(self.server_url, aids)))
 
-                if matches_list:
-                    print('Matches found:')
-                    for gid, aids, matches in matches_list:
-                        for match in matches:
+                print('Matches found: ' + str(matches_list))
+                for gid, aids, matches in matches_list:
+                    for match in matches:
+                        # check if any matches were found
+                        if match['daid_list']:
                             qaid = match['qaid']
                             daid_list = match['daid_list']
                             score_list = match['score_list']
@@ -89,10 +135,10 @@ class SealRecognitionApp(QWidget):
                                 self.fillSealDetails(qaid, best_match_aid)
                             else:
                                 self.fillSealDetails(qaid)
-                else:
-                    for gid, aids in aids_list:
-                        for aid in aids:
-                            self.fillSealDetails(aid)
+                        else:
+                            for gid, aids in aids_list:
+                                for aid in aids:
+                                    self.fillSealDetails(aid)
 
             except requests.exceptions.RequestException as e:
                 print(e)
@@ -144,7 +190,7 @@ class SealRecognitionApp(QWidget):
         daid_list = res.json()['response']
         # Perform the matching algorithm on the new images using the API endpoint /api/query/chip/dict/simple
         # The server sometimes crashes during the matching procedure, so the loop handles that
-        # The matches computed up to the crash get cached in Wildbook, so this should never resu;lt
+        # The matches computed up to the crash get cached in Wildbook, so this should never result in an infinite loop
         while True:
             try:
                 response = requests.get(f"{server_url}/api/query/chip/dict/simple", json={'qaid_list': aid_list, 'daid_list': daid_list})
@@ -256,6 +302,7 @@ class SealRecognitionApp(QWidget):
         msg_box.exec_()
 
     def showSealDetailsForm(self,  details, aid):
+        print("Displaying seal details form: " + str(details))
         # Create a custom dialog box for the seal details form
         dialog = QDialog()
         dialog.setWindowTitle("Seal Details")
@@ -281,7 +328,7 @@ class SealRecognitionApp(QWidget):
         age_label = QLabel("Age:")
         # make a dropdown menu
         age_dropdown = QComboBox()
-        age_dropdown.addItems(["pup", "juv", "adult"])
+        age_dropdown.addItems(["pup", "juv", "adult", "unknown"])
         layout.addWidget(age_label)
         layout.addWidget(age_dropdown)
 
@@ -303,7 +350,7 @@ class SealRecognitionApp(QWidget):
         if details != {}:
             name_textbox.setText(details['name'])
             gender_dropdown.setCurrentText(details['gender'])
-            age_dict = {0: 'pup', 60: 'juv', 360: 'adult'}
+            age_dict = {0: 'pup', 60: 'juv', 360: 'adult', -1: 'unknown'}
             age_dropdown.setCurrentText(age_dict[details['age']['min']])
             comments_textbox.setText('')
 
@@ -338,6 +385,7 @@ class SealRecognitionApp(QWidget):
 
         url = f"{self.server_url}/api/annot/sex"
         res = requests.get(url, json={'aid_list': [aid]})
+        print(res.json())
         assert res.json()['status']['success']
         gender = res.json()['response'][0]
         seal_details['gender'] = 'female' if gender == 0 else 'male' if gender == 1 else 'unknown'
@@ -354,6 +402,7 @@ class SealRecognitionApp(QWidget):
 
         url = f"{self.server_url}/api/annot/name/text"
         res = requests.get(url, json={'aid_list': [aid]})
+        print(res.json())
         assert res.json()['status']['success']
         seal_details['name'] = res.json()['response'][0]
 
@@ -405,8 +454,8 @@ class SealRecognitionApp(QWidget):
 
         # set ages in months
         # assuming that pup: 0-3y, juvenile: 3-5y, adult: 5-30y
-        age_min_dict = {'pup': 0, 'juv': 36, 'adult': 60, 'Unknown': -1, '': -1}
-        age_max_dict = {'pup': 36, 'juv': 60, 'adult': 360, 'Unknown': -1, '': -1}
+        age_min_dict = {'pup': 0, 'juv': 36, 'adult': 60, 'unknown': -1, '': -1}
+        age_max_dict = {'pup': 36, 'juv': 60, 'adult': 360, 'unknown': -1, '': -1}
 
         url = f"{self.server_url}/api/annot/age/months/min"
         age = age_min_dict[form_values['age']]
@@ -423,19 +472,18 @@ class SealRecognitionApp(QWidget):
         res = requests.put(url, json={'aid_list': [aid], 'viewpoint_list': [form_values['viewpoint']]})
         assert res.json()['status']['success']
 
-        print('done')
         self.showResult('Successfully updated the details for annotation with ID: ' + str(aid))
 
     def closeEvent(self, event):
         # TODO: uncomment for production
-        docker_util.stop_wbia_container()
+        # docker_util.stop_wbia_container()
         self.close()
         super().closeEvent(event)
 
 
 if __name__ == "__main__":
     # TODO change port + make sure names work
-    if not docker_util.ensure_docker_wbia(8080):
+    if not docker_util.ensure_docker_wbia(8081):
         print('Please make sure Docker Desktop is running and try again.')
         exit(1)
     app = QApplication([])

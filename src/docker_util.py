@@ -4,7 +4,7 @@ from tkinter import Tk
 from tkinter.filedialog import askdirectory
 import requests
 
-container_name = 'wildbook-ia'
+container_name = 'wildbook-ia-last-chance'
 
 
 def check_docker_running():
