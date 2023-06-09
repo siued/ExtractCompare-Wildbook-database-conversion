@@ -159,3 +159,12 @@
 - debugging gui
 - added a button to the gui to open the wildbook web UI
 - will have to look into how to export the docker container's data
+
+**8.6**
+- testing on my laptop to ensure the database works on other devices without issues
+
+**9.6**
+- thesis - introduction
+- compiled to exe using pyinstaller
+- debugging/testing gui
+- created directories and made everything in the repo more organized

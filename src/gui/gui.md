@@ -1,5 +1,9 @@
 # The planning for a small GUI for the Seal-Pattern-Recognition project
 
+# NOTE
+This description was fed into ChatGPT to generate an initial skeleton for the GUI. With a few extra prompts asking it to generate 
+some functions which it skipped over, the generated code was then taken and modified heavily to actually fulfill its task. 
+
 ## Usage
 The app is primarily used to upload new pictures  to the wildbook database and run the  matching algorithm on them.
 
@@ -15,7 +19,3 @@ The app is primarily used to upload new pictures  to the wildbook database and r
 
 
 
-
-# NOTE
-This description was fed into ChatGPT to generate an initial skeleton for the GUI. With a few extra prompts asking it to generate 
-some functions which it skipped over, the generated code was then taken and modified heavily to actually fulfill its task. 

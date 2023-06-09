@@ -1,10 +1,10 @@
 import base64
+import time
 
-from PyQt5.QtCore import QUrl, Qt, QByteArray
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, \
-    QMessageBox, QFileDialog, QDialogButtonBox, QCheckBox, QDialog, QToolBar, QAction, QMainWindow, QComboBox, \
-    QProgressBar
-from PyQt5.QtGui import QPixmap, QImage, QPainter, QIcon, QDesktopServices
+from PyQt5.QtCore import QUrl
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox, QFileDialog, QDialogButtonBox, QCheckBox, QDialog, QToolBar, QAction, \
+    QComboBox
+from PyQt5.QtGui import QPixmap, QImage, QIcon, QDesktopServices
 import requests
 import docker_util
 
@@ -332,7 +332,7 @@ class SealRecognitionApp(QWidget):
         layout.addWidget(age_label)
         layout.addWidget(age_dropdown)
 
-        viewpoint_label = QLabel("Viewpoint:")
+        viewpoint_label = QLabel("Side: (which side of the seal is visible?)")
         viewpoint_dropdown = QComboBox()
         viewpoint_dropdown.addItems(["left", "right", "down", "up", "unknown"])
         layout.addWidget(viewpoint_label)
@@ -350,7 +350,7 @@ class SealRecognitionApp(QWidget):
         if details != {}:
             name_textbox.setText(details['name'])
             gender_dropdown.setCurrentText(details['gender'])
-            age_dict = {0: 'pup', 60: 'juv', 360: 'adult', -1: 'unknown'}
+            age_dict = {0: 'pup', 36: 'juv', 60: 'adult', -1: 'unknown'}
             age_dropdown.setCurrentText(age_dict[details['age']['min']])
             comments_textbox.setText('')
 
@@ -485,6 +485,7 @@ if __name__ == "__main__":
     # TODO change port + make sure names work
     if not docker_util.ensure_docker_wbia(8081):
         print('Please make sure Docker Desktop is running and try again.')
+        time.sleep(2)
         exit(1)
     app = QApplication([])
     seal_recognition_app = SealRecognitionApp()

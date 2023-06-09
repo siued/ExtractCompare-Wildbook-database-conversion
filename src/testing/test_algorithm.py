@@ -3,7 +3,7 @@
 import json
 import requests
 
-with open("fielddb.json") as f:
+with open("../db_conversion/fielddb.json") as f:
     fdb = json.load(f)
 
 # get a list of aid-name pairs

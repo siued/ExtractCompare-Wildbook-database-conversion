@@ -1,3 +1,4 @@
 what is TAGGED
 how important are comments in the db
 do they want the option to leave wildbook running in the background or should it close after the gui closes
+pup/juv/adult month ranges

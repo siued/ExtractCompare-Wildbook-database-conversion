@@ -10,7 +10,7 @@ import numpy as np
 model = ResNet50(weights='imagenet')
 
 # Load and preprocess your input image
-img_path = 'C:/Users/Matej/Desktop/Seal-Pattern-Recognition/src/seal_image.JPG'
+img_path = '/src/seal_image.JPG'
 img = image.load_img(img_path, target_size=(224, 224))
 x = image.img_to_array(img)
 x = preprocess_input(x)

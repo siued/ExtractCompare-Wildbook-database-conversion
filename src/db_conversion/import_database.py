@@ -2,21 +2,20 @@ import os
 import requests
 import xlrd
 import json
-import util
+
+# terminology:
+# gid - id of an uploaded picture
+# annotation - a section of an image with an object of interest in it
+# aid - id of an annotation in a picture  (many-to-one relationship with gid)
+# uuid - unique id of any object in the database (ex. annotation, picture, graph, job, etc.)
+# imageset - set of images (obv)
+# detect: request for animal detection in an image (find annotation in image)
+# query: request for the matching engine (identify matching annotations)
 
 
-def upload_database():
+def main():
     # This program takes an Excel file of an ExtractCompare database and uploads it to a Wildbook server.
     # The process might take several hours, depending on the size of the database and the computing power of the server.
-
-    # terminology:
-    # gid - id of an uploaded picture
-    # annotation - a section of an image with an object of interest in it
-    # aid - id of an annotation in a picture  (many-to-one relationship with gid)
-    # uuid - unique id of any object in the database (ex. annotation, picture, graph, job, etc.)
-    # imageset - set of images (obv)
-    # detect: request for animal detection in an image (find annotation in image)
-    # query: request for the matching engine (identify matching annotations)
 
     # TODO all of these input with tkinter
     # TODO: let user input the wildbook port number
@@ -50,7 +49,21 @@ def upload_database():
         with open(save_file) as f:
             db = json.load(f)
 
-    db = util.fix_unmatched_genders(db)
+    # set duplicate names' genders to be the same (only if one of them is unknown, not if one name is marked as male vs
+    # female)
+    def fix_unmatched_genders(db):
+        names = [record['ID'] for record in db]
+        genders = [record['gender'] for record in db]
+        for i in range(len(names)):
+            for j in range(i + 1, len(names)):
+                if names[j] == names[i] and genders[i] != genders[j]:
+                    unk = i if genders[i] == 'unknown' else j
+                    k = j if unk == i else i
+                    db[unk]['gender'] = db[k]['gender']
+
+        return db
+
+    db = fix_unmatched_genders(db)
 
     db2 = []
     # get locations of all pictures in the database
@@ -352,6 +365,8 @@ def upload_database():
 
     set_data_for_annots()
 
+    # this function is used to match annotations, enable it if desired
+    # TODO match new against old, figure out how to deal with the result
     def match_annots():
         url = base_url + "api/query/chip/dict/simple"
         res = requests.get(url, json={'qaid_list': aid_list, 'daid_list': aid_list, 'verbose': True})
@@ -366,11 +381,4 @@ def upload_database():
 
 
 if __name__ == '__main__':
-    upload_database()
-
-# api/query/chip to compare list vs db_list, use chip/dict/simple, because chip and chip/dict throw internal errors (unrelated to the matching process, caused by returning incorrect value types)
-# /api/query/graph/complete/ to compare everything against everything, returns a graph with weights per uuid pair - a way to use query/chip indirectly, but compares all to all, pass arg k to get more/less than 5 best matches per annot
-# /api/review/query/chip/best/ tries to match an annot against everything, then shows the best match for review - useful for adding new images, doesnt give score, only gives uuid of best match and name etc
-# NOUSE /api/review/query/graph/ for reviewing graph in html, needs a cm_list so can't be used due to query/chip not working
-# NOUSE /api/query/graph/v2/ needs a graph_uuid returns a match_list (POST makes a graph, GET returns the match_list) - match list is all null/unspecified
-# NOUSE api/review/identification/graph?graph_uuid=... when reviewing things through browser
+    main()
