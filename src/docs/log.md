@@ -168,3 +168,13 @@
 - compiled to exe using pyinstaller
 - debugging/testing gui
 - created directories and made everything in the repo more organized
+- started working on matching the two dbs against each other
+
+**10.6**
+- running the big matching process
+- thesis - wildbook section
+- writing readme for db conversion
+- writing readme for gui
+- big matching process finished, only took ~20 minutes since the preprocessing was done before and cached
+- fixed dates in json files to be human-readable and added them to the comment for each picture
+- will need to take the readmes and convert them to pdfs for readability

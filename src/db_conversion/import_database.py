@@ -23,7 +23,7 @@ def main():
     base_url = "http://localhost:" + port + "/"
 
     # TODO: let user input the database name
-    save_file = 'fielddb2.json'
+    save_file = 'scdb2.json'
 
     # TODO: make this user inputtable
     db_pic_folder = 'C:/Users/Matej/Desktop/Seal-Pattern-Recognition/Field_db/seal_demo/newpic'
@@ -37,37 +37,37 @@ def main():
         worksheet = workbook.sheet_by_index(0)
 
         # convert to list of records, each record holds info about one seal (one line from the Excel file)
-        db = []
+        json_save = []
         for j in range(1, worksheet.nrows):
             seal_info = {}
             for i in range(0, worksheet.ncols):
                 col_name = worksheet.cell_value(0, i)
                 seal_info[col_name] = worksheet.cell_value(j, i)
-            db.append(seal_info)
+            json_save.append(seal_info)
     else:
         print('loading database from %s' % save_file)
         with open(save_file) as f:
-            db = json.load(f)
+            json_save = json.load(f)
 
     # set duplicate names' genders to be the same (only if one of them is unknown, not if one name is marked as male vs
     # female)
-    def fix_unmatched_genders(db):
-        names = [record['ID'] for record in db]
-        genders = [record['gender'] for record in db]
+    def fix_unmatched_genders(json_save):
+        names = [record['ID'] for record in json_save]
+        genders = [record['gender'] for record in json_save]
         for i in range(len(names)):
             for j in range(i + 1, len(names)):
                 if names[j] == names[i] and genders[i] != genders[j]:
                     unk = i if genders[i] == 'unknown' else j
                     k = j if unk == i else i
-                    db[unk]['gender'] = db[k]['gender']
+                    json_save[unk]['gender'] = json_save[k]['gender']
 
-        return db
+        return json_save
 
-    db = fix_unmatched_genders(db)
+    json_save = fix_unmatched_genders(json_save)
 
     db2 = []
     # get locations of all pictures in the database
-    for record in db:
+    for record in json_save:
         if 'photo_location' not in record:
             loc = str(os.path.join(db_pic_folder, record['photo'])) + '.jpg'
             if os.path.exists(loc):
@@ -76,13 +76,13 @@ def main():
         else:
             db2.append(record)
 
-    db = db2
+    json_save = db2
 
     # save the database in a json file for easier loading
     with open(save_file, 'w') as f:
-        json.dump(db, f, indent=4, separators=(',', ': '))
+        json.dump(json_save, f, indent=4, separators=(',', ': '))
 
-    print('found %s records' % len(db))
+    print('found %s records' % len(json_save))
     print('starting the upload, this might take a while depending on the number of photos you\'re uploading...')
 
     def upload_pics():
@@ -90,7 +90,7 @@ def main():
 
         print('uploading pictures to the database...')
 
-        for record in db:
+        for record in json_save:
             # don't re-upload pictures that are already in the database
             if 'gid' in record:
                 continue
@@ -99,35 +99,32 @@ def main():
                 files = {'image': open(record['photo_location'], 'rb').read()}
             except FileNotFoundError:
                 print('removing record %s because the picture is missing' % record['ID'])
-                db.remove(record)
+                json_save.remove(record)
                 continue
             res = requests.post(url, files=files)
             assert res.json()['status']['success']
             record['gid'] = res.json()['response']
             # save progress every 50 uploads
-            if db.index(record) % 50 == 0:
-                print('uploaded picture %s, saved progress' % db.index(record))
+            if json_save.index(record) % 50 == 0:
+                print('uploaded picture %s, saved progress' % json_save.index(record))
                 # overwrite previous save
                 with open(save_file, 'w') as f:
-                    json.dump(db, f, indent=4, separators=(',', ': '))
+                    json.dump(json_save, f, indent=4, separators=(',', ': '))
         return
 
     with open(save_file, 'w') as f:
-        json.dump(db, f, indent=4, separators=(',', ': '))
-
-    # TODO: add date and other picture metadata
-    # TODO: put pictures into imagesets
+        json.dump(json_save, f, indent=4, separators=(',', ': '))
 
     # upload pictures to database
     upload_pics()
 
-    gid_list = [record['gid'] for record in db]
+    gid_list = [record['gid'] for record in json_save]
 
     # remove records referring to the same picture
-    for record in db:
+    for record in json_save:
         if gid_list.count(record['gid']) > 1:
             # there is no need to check the info, if the records refer to the same picture they match
-            db.remove(record)
+            json_save.remove(record)
             gid_list.remove(record['gid'])
 
     print('uploaded %s pictures' % len(gid_list))
@@ -137,7 +134,7 @@ def main():
 
     # save the final state
     with open(save_file, 'w') as f:
-        json.dump(db, f, indent=4, separators=(',', ': '))
+        json.dump(json_save, f, indent=4, separators=(',', ': '))
 
     # get uuid identifiers for the uploaded pictures, can be enabled if needed
     def get_uuids(gid_list):
@@ -163,9 +160,8 @@ def main():
             res += requests.put(url, json={'gid_list': gid_list[i:i + batch_size]}).json()['response']
         return res
 
-    # TODO: docs list a lot more nn files, look into that
     # detect seals in the uploaded pictures, get annotation ids of each seal detected
-    detect_list = [record['gid'] for record in db if 'aids' not in record]
+    detect_list = [record['gid'] for record in json_save if 'aids' not in record]
     if len(detect_list) > 0:
         print('detecting seals in %s pictures using the yolo algorithm, this might take a while. During this phase the '
               'database web UI will be unavailable due to the detection running in the background. ' % len(detect_list))
@@ -173,11 +169,11 @@ def main():
         # add the annotation ids to the json database save
         zipped_list = list(zip(detect_list, aid_list))
         for gid, aids in zipped_list:
-            for record in db:
+            for record in json_save:
                 if record['gid'] == gid:
                     record['aids'] = aids
 
-    detect_list = [record['gid'] for record in db if not record['aids']]
+    detect_list = [record['gid'] for record in json_save if not record['aids']]
     if len(detect_list) > 0:
         print(
             'detecting seals in %s pictures using the lightnet algorithm, this might take a while. During this phase the '
@@ -186,13 +182,13 @@ def main():
         # add the annotation ids to the json database save
         zipped_list = list(zip(detect_list, aid_list))
         for gid, aids in zipped_list:
-            for record in db:
+            for record in json_save:
                 if record['gid'] == gid:
                     record['aids'] = aids
 
     # for the pictures where nothing was detected, add an annotation over the entire picture
     def add_annots_undetected_images():
-        undetected_records = [record for record in db if not record['aids']]
+        undetected_records = [record for record in json_save if not record['aids']]
 
         # need the image uuid to add an annotation
         gid_list = [record['gid'] for record in undetected_records]
@@ -227,7 +223,7 @@ def main():
         # add the annotation ids to the json database save
         zipped_list = list(zip(gid_list, res.json()['response']))
         for gid, aid in zipped_list:
-            for record in db:
+            for record in json_save:
                 if record['gid'] == gid:
                     record['aids'] = [aid]
 
@@ -236,10 +232,10 @@ def main():
     add_annots_undetected_images()
 
     with open(save_file, 'w') as f:
-        json.dump(db, f, indent=4, separators=(',', ': '))
+        json.dump(json_save, f, indent=4, separators=(',', ': '))
 
     # convert list of lists to a regular list
-    aid_list_flattened = [aid for record in db for aid in record['aids']]
+    aid_list_flattened = [aid for record in json_save for aid in record['aids']]
     print('found %s annotations' % len(aid_list_flattened))
     print('this can be more than the number of uploaded pictures because some pictures have more than one seal in them')
 
@@ -259,14 +255,16 @@ def main():
         # set names for all annots
         url = base_url + "api/annot/name"
         name_list = []
-        for record in db:
+        for record in json_save:
             if len(record['aids']) == 0:
                 continue
             elif len(record['aids']) == 1:
                 name_list.append(record['ID'])
             else:
                 # more than one seal detected in the picture, unsure which one the original db is referring to
-                name_list += ['unknown_' + record['ID']] * len(record['aids'])
+                # name the annots as unknown_NAME_0, unknown_NAME_1, etc
+                name = record['ID']
+                name_list += [f'unknown_{name}_{i}' for i, aid in enumerate(record['aids'])]
         res = requests.put(url, json={'aid_list': aid_list_flattened, 'name_list': name_list})
         assert res.json()['status']['success']
         print('set names for all annots')
@@ -274,14 +272,18 @@ def main():
         # add comments, append whether the seal is tagged or not to the end of each comment
         url = base_url + "api/annot/note"
         note_list = []
-        for record in db:
+        for record in json_save:
             if len(record['aids']) == 0:
                 continue
             elif len(record['aids']) == 1:
-                note_list.append(record['comments'] + ', tagged: %s' % 'yes' if record['tagged'] == 1 else 'no')
+                note = record['comments']
+                tagged = 'yes' if record['tagged'] == 1 else 'no'
+                date = record['dt']
+                note_list.append(f'{note}, tagged:{tagged}, date: {date}')
             else:
                 # more than one seal detected in the picture, unsure which one the original db is referring to
-                note_list += ['unknown'] * len(record['aids'])
+                tagged = 'yes' if record['tagged'] == 1 else 'no'
+                note_list += [f'unknown annot from image of {record["ID"]}, tagged: {tagged}, date: {record["dt"]}'] * len(record['aids'])
         res = requests.put(url, json={'aid_list': aid_list_flattened, 'notes_list': note_list})
         assert res.json()['status']['success']
         print('added comments')
@@ -296,7 +298,7 @@ def main():
         # set gender for all annots
         url = base_url + "api/annot/sex"
         gender_list = []
-        for record in db:
+        for record in json_save:
             if len(record['aids']) == 0:
                 continue
             elif len(record['aids']) == 1:
@@ -326,7 +328,7 @@ def main():
         age_min_list = []
         age_max_dict = {'pup': 36, 'juv': 60, 'adult': 360, 'Unknown': -1, '': -1}
         age_max_list = []
-        for record in db:
+        for record in json_save:
             if len(record['aids']) == 0:
                 continue
             elif len(record['aids']) == 1:
@@ -350,7 +352,7 @@ def main():
         url = base_url + "api/annot/viewpoint"
         viewpoint_dict = {'L': 'left', 'R': 'right', 'M': 'down', '': 'unknown'}
         viewpoint_list = []
-        for record in db:
+        for record in json_save:
             viewpoint = viewpoint_dict[record['side']]
             if len(record['aids']) == 0:
                 continue
@@ -366,18 +368,30 @@ def main():
     set_data_for_annots()
 
     # this function is used to match annotations, enable it if desired
-    # TODO match new against old, figure out how to deal with the result
     def match_annots():
+        # get a list of all valid aids
+        url = base_url + "api/annot"
+        res = requests.get(url)
+        assert res.status_code == 200
+        valid_aid_list = res.json()['response']
+
+        # get a list of all aids in the database that were not just added
+        aid_list = [aid for record in json_save for aid in record['aids']]
+        daid_list = [aid for aid in valid_aid_list if aid not in aid_list]
+
+        if not daid_list:
+            print('matching is not being performed because there were no annotations in the database to match against')
+            return
+
         url = base_url + "api/query/chip/dict/simple"
-        res = requests.get(url, json={'qaid_list': aid_list, 'daid_list': aid_list, 'verbose': True})
+        res = requests.get(url, json={'qaid_list': daid_list, 'daid_list': aid_list, 'verbose': True})
         response = res.json()['response']
-        for i in range(len(response)):
-            qaid = response[i]['qaid']
-            match_list = response[i]['daid_list']
-            score_list = response[i]['score_list']
-            best_match_index = score_list.index(max(score_list))
-            print('qaid: ' + str(qaid) + ', best match: ' + str(match_list[best_match_index]) + ', score: ' + str(
-                max(score_list)))
+        # save the matching results to a file
+        with open('matching_results_reverse.json', 'w') as f:
+            json.dump(response, f, indent=4, separators=(',', ': '))
+        return
+
+    # match_annots()
 
 
 if __name__ == '__main__':

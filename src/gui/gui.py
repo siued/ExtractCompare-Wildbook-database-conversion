@@ -1,4 +1,5 @@
 import base64
+import datetime
 import time
 
 from PyQt5.QtCore import QUrl
@@ -9,27 +10,34 @@ import requests
 import docker_util
 
 
-def get_uuids(gid_list):
-    url = "http://localhost:8081/api/image/uuid"
+def get_comment(aid, server_url):
+    url = f"{server_url}/api/annot/note"
+    res = requests.get(url, json={'aid_list': [aid]})
+    assert res.status_code == 200
+    return res.json()['response'][0]
+
+
+def get_uuids(gid_list, server_url):
+    url = f"{server_url}/api/image/uuid"
     res = requests.get(url, json={'gid_list': gid_list})
-    assert res.json()['status']['success']
+    assert res.status_code == 200
     uuid_list = [uuid['__UUID__'] for uuid in res.json()['response']]
     return uuid_list
 
 
 def add_annots_undetected_images(gid_list, server_url):
     # need the image uuid to add an annotation
-    image_uuid_list = get_uuids(gid_list)
+    image_uuid_list = get_uuids(gid_list, server_url)
 
     # get picture dimensions
     url = f"{server_url}/api/image/height"
     res = requests.get(url, json={'gid_list': gid_list})
-    assert res.json()['status']['success']
+    assert res.status_code == 200
     height_list = res.json()['response']
 
     url = f"{server_url}/api/image/width"
     res = requests.get(url, json={'gid_list': gid_list})
-    assert res.json()['status']['success']
+    assert res.status_code == 200
     width_list = res.json()['response']
 
     # add annotation over the entire picture
@@ -39,13 +47,13 @@ def add_annots_undetected_images(gid_list, server_url):
                               'annot_bbox_list': [(0, 0, width, height) for width, height in
                                                   zip(width_list, height_list)],
                               'annot_theta_list': [0]})
-    assert res.json()['status']['success']
+    assert res.status_code == 200
     annot_uuid_list = [annot['__UUID__'] for annot in res.json()['response']]
 
     # get the aid of the annotation and add it to the json database save
     url = f"{server_url}/api/annot/rowid/uuid"
     res = requests.get(url, json={'uuid_list': annot_uuid_list})
-    assert res.json()['status']['success']
+    assert res.status_code == 200
 
     # add the annotation ids to the json database save
     zipped_list = list(zip(gid_list, res.json()['response']))
@@ -56,17 +64,17 @@ def add_annots_undetected_images(gid_list, server_url):
 class SealRecognitionApp(QWidget):
     server_url: str
 
-    def __init__(self):
+    def __init__(self,  port):
         super().__init__()
         self.setWindowTitle("Seal Pattern Recognition")
         self.resize(200, 150)
-        self.initUI()
+        self.initUI(port)
 
-    def initUI(self):
+    def initUI(self,  port):
         # Create widgets
         self.server_label = QLabel("Wildbook Server URL:")
         self.server_input = QLineEdit()
-        self.server_input.setText("http://localhost:8081")  # Set a default server URL
+        self.server_input.setText(f"http://localhost:{port}")  # Set a default server URL
         self.upload_button = QPushButton("Upload Images")
         self.upload_button.clicked.connect(self.uploadImages)
         self.toolbar = QToolBar("Toolbar")
@@ -129,7 +137,7 @@ class SealRecognitionApp(QWidget):
                             print('qaid: ' + str(qaid) + ', best match: ' + str(daid_list[best_match_index]) +
                                   ', score: ' + str(max(score_list)))
                             best_match_aid = daid_list[best_match_index]
-                            confirmed = self.confirmMatch(qaid, best_match_aid, max(score_list))
+                            confirmed = self.confirmMatch(qaid, best_match_aid, max(score_list), self.server_url)
                             print('Match confirmed' if confirmed else 'Match rejected')
                             if confirmed:
                                 self.fillSealDetails(qaid, best_match_aid)
@@ -206,7 +214,7 @@ class SealRecognitionApp(QWidget):
             print("Matching failed")
             return None
 
-    def confirmMatch(self, qaid, best_match, score):
+    def confirmMatch(self, qaid, best_match, score, server_url):
         # Display the best match to the user and let them confirm if it's a match or not
         # Return True if confirmed, False otherwise
 
@@ -234,6 +242,11 @@ class SealRecognitionApp(QWidget):
             # Add the image labels to the layout
             layout.addWidget(image1_label)
             layout.addWidget(image2_label)
+
+            comment_label = QLabel(f'Comment: {get_comment(best_match, server_url)}')
+            layout.addWidget(comment_label)
+        else:
+            return False
 
         # Create buttons for confirmation
         confirm_button = QPushButton("Confirm")
@@ -340,6 +353,8 @@ class SealRecognitionApp(QWidget):
 
         comments_label = QLabel("Comments:")
         comments_textbox = QLineEdit()
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        comments_textbox.setText(f"date: {current_date}")
         layout.addWidget(comments_label)
         layout.addWidget(comments_textbox)
 
@@ -386,24 +401,24 @@ class SealRecognitionApp(QWidget):
         url = f"{self.server_url}/api/annot/sex"
         res = requests.get(url, json={'aid_list': [aid]})
         print(res.json())
-        assert res.json()['status']['success']
+        assert res.status_code == 200
         gender = res.json()['response'][0]
         seal_details['gender'] = 'female' if gender == 0 else 'male' if gender == 1 else 'unknown'
 
         url = f"{self.server_url}/api/annot/age/months/min"
         res = requests.get(url, json={'aid_list': [aid]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
         seal_details['age'] = {'min': res.json()['response'][0]}
 
         url = f"{self.server_url}/api/annot/age/months/max"
         res = requests.get(url, json={'aid_list': [aid]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
         seal_details['age']['max'] = res.json()['response'][0]
 
         url = f"{self.server_url}/api/annot/name/text"
         res = requests.get(url, json={'aid_list': [aid]})
         print(res.json())
-        assert res.json()['status']['success']
+        assert res.status_code == 200
         seal_details['name'] = res.json()['response'][0]
 
         return seal_details
@@ -416,41 +431,41 @@ class SealRecognitionApp(QWidget):
 
         url = f"{self.server_url}/api/annot/interest"
         res = requests.put(url, json={'aid_list': [aid], 'flag_list': [1]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         # set all annots as exemplars
         url = f"{self.server_url}/api/annot/exemplar"
         res = requests.put(url, json={'aid_list': [aid], 'flag_list': [1]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         # set names for all annots
         url = f"{self.server_url}/api/annot/name"
         res = requests.put(url, json={'aid_list': [aid], 'name_list': [form_values['name']]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         # add comments, append whether the seal is tagged or not to the end of each comment
         url = f"{self.server_url}/api/annot/note"
         comment = form_values['comments'] + ', tagged: ' + form_values['tagged']
         res = requests.put(url, json={'aid_list': [aid], 'notes_list': [comment]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         # set species
         url = f"{self.server_url}/api/annot/species"
         res = requests.put(url, json={'aid_list': [aid], 'species_text_list': ['harbour_seal']})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         # set gender for all annots
         url = f"{self.server_url}/api/annot/sex"
         # enum: 0: female, 1: male, 2: unknown
         gender = 0 if form_values['gender'] == 'female' else 1 if form_values['gender'] == 'male' else 2
         res = requests.put(url, json={'aid_list': [aid], 'name_sex_list': [gender]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         # set quality as good
         # enum: 1: junk until 5: excellent
         url = f"{self.server_url}/api/annot/quality"
         res = requests.put(url, json={'aid_list': [aid], 'annot_quality_list': [5]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         # set ages in months
         # assuming that pup: 0-3y, juvenile: 3-5y, adult: 5-30y
@@ -460,17 +475,17 @@ class SealRecognitionApp(QWidget):
         url = f"{self.server_url}/api/annot/age/months/min"
         age = age_min_dict[form_values['age']]
         res = requests.put(url, json={'aid_list': [aid], 'annot_age_months_est_min_list': [age]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         url = f"{self.server_url}/api/annot/age/months/max"
         age = age_max_dict[form_values['age']]
         res = requests.put(url, json={'aid_list': [aid], 'annot_age_months_est_max_list': [age]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         # set viewpoint
         url = f"{self.server_url}/api/annot/viewpoint"
         res = requests.put(url, json={'aid_list': [aid], 'viewpoint_list': [form_values['viewpoint']]})
-        assert res.json()['status']['success']
+        assert res.status_code == 200
 
         self.showResult('Successfully updated the details for annotation with ID: ' + str(aid))
 
@@ -482,12 +497,19 @@ class SealRecognitionApp(QWidget):
 
 
 if __name__ == "__main__":
-    # TODO change port + make sure names work
-    if not docker_util.ensure_docker_wbia(8081):
-        print('Please make sure Docker Desktop is running and try again.')
+    # TODO make sure names work in docker_util
+    port = input('Please enter the port number of Wildbook. Type the number and press Enter. If you wish to continue '
+                 'with the default port, just press Enter. ')
+    if port == '':
+        port = 8081
+    else:
+        port = int(port)
+    if not docker_util.ensure_docker_wbia(port):
+        print(f'ERROR: Please make sure Docker Desktop is running and try again. Also make sure you typed in the '
+              f'correct port number: {port}')
         time.sleep(2)
         exit(1)
     app = QApplication([])
-    seal_recognition_app = SealRecognitionApp()
+    seal_recognition_app = SealRecognitionApp(port)
     seal_recognition_app.show()
     app.exec_()
