@@ -1,6 +1,8 @@
 import base64
 import datetime
 import time
+from tkinter import Tk
+from tkinter.simpledialog import askstring
 
 from PyQt5.QtCore import QUrl
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox, QFileDialog, QDialogButtonBox, QCheckBox, QDialog, QToolBar, QAction, \
@@ -495,15 +497,21 @@ class SealRecognitionApp(QWidget):
         super().closeEvent(event)
 
 
+def get_text_input(title, textfield):
+    Tk().withdraw()  # Hide the main window
+    text_input = askstring(textfield, title)
+    return text_input
+
+
 if __name__ == "__main__":
-    # TODO make sure names work in docker_util
+    # docker_util assumes the name of the Wildbook container is 'wildbook-ia'
     default_port = 8081
-    port = input(f'Please enter the port number of Wildbook. Type the number and press Enter. If you wish to continue '
-                 f'with the default port {default_port}, just press Enter. ')
+    port = get_text_input(f'Enter the port number of the Wildbook server, leave blank for default port {default_port}',
+                          'Port number')
+    if port is None:
+        exit()
     if port == '':
         port = default_port
-    else:
-        port = int(port)
     if not docker_util.ensure_docker_wbia(port):
         print(f'ERROR: Please make sure Docker Desktop is running and try again. Also make sure you typed in the '
               f'correct port number: {port}')

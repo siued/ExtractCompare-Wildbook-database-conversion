@@ -187,3 +187,5 @@
 - thesis - matching, conclusion, code
 - testing algorithm
 - emailed seal centre to set a meeting
+- added file select dialogs to db conversion code
+- fixing last couple todos in code

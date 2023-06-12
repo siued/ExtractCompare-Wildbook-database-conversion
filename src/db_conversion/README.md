@@ -23,7 +23,7 @@ try clicking on it again. If that doesn't get it to export, close MS Access and 
 ```docker container run -d -p 8081:5000 --name wildbook-ia -v PATH/TO/YOUR/DATABASE/:/data/db/ wildme/wbia:latest```
 8. Press Enter. The docker container should start, and a container id like ```e17e67870d8fe3a391e1ab76b0558d0626ce655ec3bd25b3184e57c011cce654``` should be printed in Powershell. You should also be able to see the running container in Docker if you open the container section in the menu on the left. 
 9. After waiting for a minute for wildbook to initialize, open a web browser and go to http://localhost:8081. You should see the Wildbook UI. If you don't, try restarting the container in Docker.
-10. If you were trying to load an already existing Wildbook database, go to View and confirm that the number of images, annotations and names are not 0. 
+10. If you were trying to load an already existing Wildbook database, go to View and confirm that the number of images, annotations and names are not 0. The database will not be loaded if you input the incorrect directory. If this happens, delete the Docker container and try again. 
 
 ## Converting your existing ExtractCompare database to Wildbook
 Once you have your database exported to Excel and your Wildbook server running, you can start the conversion process.
@@ -37,6 +37,10 @@ Once you have your database exported to Excel and your Wildbook server running, 
 5. If you are matching the newly converted database against an existing one in Wildbook, expect this to take a long time as well. Each picture has to be preprocessed to be ready to be matched and this takes a long time. Once the preprocessing is done, it is saved and will not need to be redone. So the first matching process on a new set of images will always take much longer than any subsequent matching processes. 
 5. Once the conversion is finished, you can go to the Wildbook UI and check that the database was uploaded correctly and view the pictures. You can also safely remove the .json file. If you wish to keep the .json file, you can use it with Python or other programing languages to analyze your database. 
 6. If you wish to convert another database, you can simply run the executable again and give it the other database's Excel file and a different name  for the .json file.
+
+## Matching
+There  is an option to photo-match the entire freshly uploaded database against the pre-existing Wildbook database. This is disabled by default, because there are various ways to treat the results. If you wish to do this, you will have to download the source code and enable the matching function manually. 
+The received matches will be stored in matching_results.json in the same folder as the executable. To further process these matches, you will have to write your own code which reads them in and analyzes them because the  desired actions differ on a case-by-case basis. 
 
 ## Known issues
 Note that sometimes Wildbook crashes during intense workloads. If you are converting a large database and experience a crash during the process, you may have to restart wildbook and start the conversion process again. The progress is saved in the .json file so the conversion will pick up where it left off. 

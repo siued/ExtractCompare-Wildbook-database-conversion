@@ -1,4 +1,7 @@
 import os
+from tkinter import Tk, simpledialog
+from tkinter.filedialog import askdirectory, askopenfilename
+
 import requests
 import xlrd
 import json
@@ -12,26 +15,53 @@ import json
 # detect: request for animal detection in an image (find annotation in image)
 # query: request for the matching engine (identify matching annotations)
 
+def select_folder(title):
+    Tk().withdraw()  # Hide the main window
+    folder_path = askdirectory(title=title)
+    return folder_path
+
+def get_text_input(title, textfield):
+    Tk().withdraw()  # Hide the main window
+    text_input = simpledialog.askstring(textfield, title)
+    return text_input
+
+def select_file(title):
+    Tk().withdraw()  # Hide the main window
+    file_path = askopenfilename(title=title)
+    return file_path
+
 
 def main():
     # This program takes an Excel file of an ExtractCompare database and uploads it to a Wildbook server.
     # The process might take several hours, depending on the size of the database and the computing power of the server.
 
-    # TODO all of these input with tkinter
-    # TODO: let user input the wildbook port number
-    port = str(8081)
+    default_port = str(8081)
+
+    port = get_text_input(f'Enter the port number of the Wildbook server, leave blank for default port {default_port}',
+                          'Port number')
+    if port is None:
+        exit()
+    if port == '':
+        port = default_port
+
     base_url = "http://localhost:" + port + "/"
 
-    # TODO: let user input the database name
-    save_file = 'scdb2.json'
+    name = get_text_input('Enter the name of the database. This will be the name of the json file used to save progress',
+                          'Database name')
+    if name is None:
+        exit()
+    save_file = f'{name}.json'
 
-    # TODO: make this user inputtable
-    db_pic_folder = 'C:/Users/Matej/Desktop/Seal-Pattern-Recognition/Field_db/seal_demo/newpic'
+    db_pic_folder = select_folder('Select the folder with the pictures of the database, will look something like '
+                                  '/seal_demo/newpic')
+    if db_pic_folder is None:
+        exit()
 
     # see if the database was already converted to json, use the Excel export if it hasn't
     if not os.path.exists(save_file):
-        # TODO: make this user inputtable
-        excel_exported_db = 'C:/Users/Matej/Desktop/Seal-Pattern-Recognition/fielddb_export.xls'
+        excel_exported_db = select_file('Select the Excel file of the database')
+        if excel_exported_db is None:
+            exit()
 
         workbook = xlrd.open_workbook(excel_exported_db)
         worksheet = workbook.sheet_by_index(0)
@@ -384,10 +414,10 @@ def main():
             return
 
         url = base_url + "api/query/chip/dict/simple"
-        res = requests.get(url, json={'qaid_list': daid_list, 'daid_list': aid_list, 'verbose': True})
+        res = requests.get(url, json={'qaid_list': aid_list, 'daid_list': daid_list})
         response = res.json()['response']
         # save the matching results to a file
-        with open('matching_results_reverse.json', 'w') as f:
+        with open('matching_results.json', 'w') as f:
             json.dump(response, f, indent=4, separators=(',', ': '))
         return
 
