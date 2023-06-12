@@ -56,7 +56,7 @@ def add_annots_undetected_images(gid_list, server_url):
     assert res.status_code == 200
 
     # add the annotation ids to the json database save
-    zipped_list = list(zip(gid_list, res.json()['response']))
+    zipped_list = list(zip(gid_list, [[aid] for aid in res.json()['response']]))
 
     print('Added full-picture annotations to all pictures where nothing was detected')
     return zipped_list
@@ -122,31 +122,29 @@ class SealRecognitionApp(QWidget):
                     aids_list += add_annots_undetected_images(undetected_gid_list, self.server_url)
 
                 matches_list = []
-                for gid, aids in aids_list:
-                    matches_list.append((gid, aids, self.matchImage(self.server_url, aids)))
+                list_to_match = [aid for gid, aids in aids_list for aid in aids]
+                matches = self.matchImage(self.server_url, list_to_match)
 
                 print('Matches found: ' + str(matches_list))
-                for gid, aids, matches in matches_list:
-                    for match in matches:
-                        # check if any matches were found
-                        if match['daid_list']:
-                            qaid = match['qaid']
-                            daid_list = match['daid_list']
-                            score_list = match['score_list']
-                            best_match_index = score_list.index(max(score_list))
-                            print('qaid: ' + str(qaid) + ', best match: ' + str(daid_list[best_match_index]) +
-                                  ', score: ' + str(max(score_list)))
-                            best_match_aid = daid_list[best_match_index]
-                            confirmed = self.confirmMatch(qaid, best_match_aid, max(score_list), self.server_url)
-                            print('Match confirmed' if confirmed else 'Match rejected')
-                            if confirmed:
-                                self.fillSealDetails(qaid, best_match_aid)
-                            else:
-                                self.fillSealDetails(qaid)
+                for match in matches:
+                    # check if any matches were found
+                    if match['daid_list']:
+                        qaid = match['qaid']
+                        daid_list = match['daid_list']
+                        score_list = match['score_list']
+                        best_match_index = score_list.index(max(score_list))
+                        print('qaid: ' + str(qaid) + ', best match: ' + str(daid_list[best_match_index]) +
+                              ', score: ' + str(max(score_list)))
+                        best_match_aid = daid_list[best_match_index]
+                        confirmed = self.confirmMatch(qaid, best_match_aid, max(score_list), self.server_url)
+                        print('Match confirmed' if confirmed else 'Match rejected')
+                        if confirmed:
+                            self.fillSealDetails(qaid, best_match_aid)
                         else:
-                            for gid, aids in aids_list:
-                                for aid in aids:
-                                    self.fillSealDetails(aid)
+                            self.fillSealDetails(qaid)
+                    else:
+                        print(f'No matches found for aid {match["qaid"]}.')
+                        self.fillSealDetails(match['qaid'])
 
             except requests.exceptions.RequestException as e:
                 print(e)
@@ -191,7 +189,6 @@ class SealRecognitionApp(QWidget):
             return None
 
     def matchImage(self, server_url, aid_list):
-        print("Performing matching")
         # First get the list of all annotations using the API endpoint /api/annot
         res = requests.get(f"{server_url}/api/annot")
         assert res.status_code == 200
@@ -201,6 +198,7 @@ class SealRecognitionApp(QWidget):
         # The matches computed up to the crash get cached in Wildbook, so this should never result in an infinite loop
         while True:
             try:
+                print("Performing matching")
                 response = requests.get(f"{server_url}/api/query/chip/dict/simple", json={'qaid_list': aid_list, 'daid_list': daid_list})
                 break
             except requests.exceptions.RequestException as e:
@@ -291,6 +289,7 @@ class SealRecognitionApp(QWidget):
         pixmap = QPixmap.fromImage(image)
         label.setPixmap(pixmap)
         label.setScaledContents(True)
+        label.setMaximumHeight(400)
 
     def fillSealDetails(self, qaid, best_match=None):
         # If no match, prompt the user to fill in the seal details using a form
@@ -498,10 +497,11 @@ class SealRecognitionApp(QWidget):
 
 if __name__ == "__main__":
     # TODO make sure names work in docker_util
-    port = input('Please enter the port number of Wildbook. Type the number and press Enter. If you wish to continue '
-                 'with the default port, just press Enter. ')
+    default_port = 8081
+    port = input(f'Please enter the port number of Wildbook. Type the number and press Enter. If you wish to continue '
+                 f'with the default port {default_port}, just press Enter. ')
     if port == '':
-        port = 8081
+        port = default_port
     else:
         port = int(port)
     if not docker_util.ensure_docker_wbia(port):

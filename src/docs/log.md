@@ -178,3 +178,12 @@
 - big matching process finished, only took ~20 minutes since the preprocessing was done before and cached
 - fixed dates in json files to be human-readable and added them to the comment for each picture
 - will need to take the readmes and convert them to pdfs for readability
+
+**11.6**
+- adding to the gui readme
+- checking docker performance using hyper-v instead of wsl2
+
+**12.6**
+- thesis - matching, conclusion, code
+- testing algorithm
+- emailed seal centre to set a meeting
