@@ -5,7 +5,7 @@ from tkinter.filedialog import askdirectory
 import requests
 
 # TODO: change
-container_name = 'wildbook-ia-last-chance'
+container_name = 'wildbook-ia'
 
 
 def check_docker_running():
@@ -32,7 +32,7 @@ def ensure_docker_wbia(port=8081):
         client = docker.from_env()
         images = client.images.list()
         if not any(image.tags[0] == 'wildme/wbia:latest' for image in images):
-            print('Downloading Docker image, this may take a while...')
+            print('Downloading Docker image (~15GB), this may take a while...')
             client.images.pull('wildme/wbia')
             print('Docker image downloaded successfully.')
     except Exception as e:
@@ -51,11 +51,13 @@ def ensure_wbia_container(client, port):
         db_path = select_folder("Select the folder with an existing database or where you would like a new "
                                 "database to be created")
         volumes = {db_path: {'bind': '/data/docker/', 'mode': 'rw'}}
+        # set max memory to 4GB, default is not enough
         client.containers.run('wildme/wbia', name=container_name, ports={'5000/tcp': port}, detach=True,
-                              volumes=volumes)
+                              mem_limit='4g', volumes=volumes)
         print('Container created successfully.')
     container = client.containers.get(container_name)
     if container.status != 'running':
+        print('Starting Wildbook container')
         container.start()
         # wait for the server to start
         while True:

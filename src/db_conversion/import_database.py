@@ -417,11 +417,12 @@ def main():
         res = requests.get(url, json={'qaid_list': aid_list, 'daid_list': daid_list})
         response = res.json()['response']
         # save the matching results to a file
-        with open('matching_results.json', 'w') as f:
+        with open('matching_results2.json', 'w') as f:
             json.dump(response, f, indent=4, separators=(',', ': '))
         return
 
-    # match_annots()
+    # TODO comment this out
+    match_annots()
 
 
 if __name__ == '__main__':

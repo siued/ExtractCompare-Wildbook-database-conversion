@@ -189,3 +189,8 @@
 - emailed seal centre to set a meeting
 - added file select dialogs to db conversion code
 - fixing last couple todos in code
+- made the symposium presentation
+
+**13.6**
+- testing hyper-v docker with more RAM, works fine with at least 4gb RAM for Wildbook
+- adding the memory stuff and hyper-v vs WSL2 instructions to readme

@@ -123,11 +123,11 @@ class SealRecognitionApp(QWidget):
                 if undetected_gid_list:
                     aids_list += add_annots_undetected_images(undetected_gid_list, self.server_url)
 
-                matches_list = []
+                # do the matching in one call to make it faster
                 list_to_match = [aid for gid, aids in aids_list for aid in aids]
                 matches = self.matchImage(self.server_url, list_to_match)
 
-                print('Matches found: ' + str(matches_list))
+                print('Matches found: ' + str(matches))
                 for match in matches:
                     # check if any matches were found
                     if match['daid_list']:

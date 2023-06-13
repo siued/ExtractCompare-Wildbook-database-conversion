@@ -14,16 +14,19 @@ try clicking on it again. If that doesn't get it to export, close MS Access and 
 
 ## Setting up Docker and Wildbook
 1. Download Docker Desktop (https://www.docker.com/products/docker-desktop/). If the link doesn't lead anywhere, search for Docker  and download from there
-2. TODO WSL?
-3. Open the docker desktop installer and follow the instructions
-4. Open the Docker Desktop app, go to images in the menu on the left, and search for 'wildme/wbia'. Pull the image (15GB download, may take a long time). 
-5. Open Powershell (press the Windows key, type in 'powershell', and press Enter). If you are on a different operating system, any terminal utility will do
-6. Find the path to the directory where you would like your database to be stored (go to the folder in Windows explorer, right click on it, properties, and copy the location from there)
-7. Paste the following command into Powershell, replacing the part in caps with the path from step 6. 
-```docker container run -d -p 8081:5000 --name wildbook-ia -v PATH/TO/YOUR/DATABASE/:/data/db/ wildme/wbia:latest```
-8. Press Enter. The docker container should start, and a container id like ```e17e67870d8fe3a391e1ab76b0558d0626ce655ec3bd25b3184e57c011cce654``` should be printed in Powershell. You should also be able to see the running container in Docker if you open the container section in the menu on the left. 
-9. After waiting for a minute for wildbook to initialize, open a web browser and go to http://localhost:8081. You should see the Wildbook UI. If you don't, try restarting the container in Docker.
-10. If you were trying to load an already existing Wildbook database, go to View and confirm that the number of images, annotations and names are not 0. The database will not be loaded if you input the incorrect directory. If this happens, delete the Docker container and try again. 
+2. Open the docker desktop installer you downloaded and follow the instructions. If your computer supports hyper-v, you can use Docker with it. If not, you will have to install WSL2. 
+The Docker installer should instruct you further. TODO check this. 
+3. If you are running Docker with the hyper-v backend, go to the Docker settings, Resources, Advanced, and set the allowed memory to at least 4GB. Wildbook may run slow or crash if it doesn't have enough RAM. Note that Docker will always use all the RAM you allow it while running. Also note that hyper-v Docker RAM usage will not be shown in Task Manager, so it may look like your computer's RAM is being used up by nothing. You can also give it more CPU cores if you don't mind the computer being slow while Wildbook ir running detection/matching. 
+4. If you plan to use the GUI app (in the src/gui folder in this repository), you can simply run the GUI app at this point. On launch, it will check whether a Wildbook container already exists and create one otherwise. If you wish to do this manually, follow the following instructions. 
+5. Open the Docker Desktop app, go to images in the menu on the left, and search for 'wildme/wbia'. Pull the image (15GB download, may take a long time). 
+6. Open Powershell (press the Windows key, type in 'powershell', and press Enter). If you are on a different operating system, any terminal utility will do
+7. Find the path to the directory where you would like your database to be stored (go to the folder in Windows explorer, right click on it, properties, and copy the location from there)
+8. Paste the following command into Powershell, replacing the part in caps with the path from step 6. 
+```docker container run -d -p 8081:5000 -m 4g --name wildbook-ia -v PATH/TO/YOUR/DATABASE/:/data/db/ wildme/wbia:latest```
+If an error is printed saying the docker daemon isn't running, make sure that Docker is running and try again. 
+9. Press Enter. The docker container should start, and a container id like ```e17e67870d8fe3a391e1ab76b0558d0626ce655ec3bd25b3184e57c011cce654``` should be printed in Powershell. You should also be able to see the running container in Docker if you open the container section in the menu on the left. 
+10. After waiting for a minute for wildbook to initialize, open a web browser and go to http://localhost:8081. You should see the Wildbook UI. If you don't, try restarting the container in Docker.
+11. If you were trying to load an already existing Wildbook database, go to View and confirm that the number of images, annotations and names are not 0. The database will not be loaded if you input the incorrect directory. If this happens, delete the Docker container and try again. 
 
 ## Converting your existing ExtractCompare database to Wildbook
 Once you have your database exported to Excel and your Wildbook server running, you can start the conversion process.

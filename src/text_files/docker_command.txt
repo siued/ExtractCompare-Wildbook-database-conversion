@@ -1,5 +1,5 @@
 This is the command used to create the wildbook container.
 
-docker container run -d -p 8081:5000 --name wildbook-ia -v C:/Users/Matej/Desktop/database2/:/data/db/ wildme/wbia:latest
+docker container run -d -p 8081:5000 -m 4096m --name wildbook-ia -v C:/Users/Matej/Desktop/database2/:/data/db/ wildme/wbia:latest
 
 docker cp C:/Users/Matej/Desktop/database/db/ wildbook-ia-without-mount:/data/
