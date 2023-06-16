@@ -194,3 +194,15 @@
 **13.6**
 - testing hyper-v docker with more RAM, works fine with at least 4gb RAM for Wildbook
 - adding the memory stuff and hyper-v vs WSL2 instructions to readme
+
+**16.6**
+- video call  with seal centre
+- meeting with supervisor
+- thesis - reformatting according to feedback from supervisor
+- adding things based on feedback from seal centre
+- added view sightings button
+- reformatted annot notes to be json strings
+- found  out there  is more info in EC database which wasn't in the excel files because the export sucks
+- added change seal details button, changing gender is now possible
+- extracted  sighting data from databases, added it to json files, added it  as comments  in the db, added all the ones that dont go into the db into a separate file
+- added sighting data without photos to sighting view

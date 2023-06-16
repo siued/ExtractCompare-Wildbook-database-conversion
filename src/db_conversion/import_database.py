@@ -1,6 +1,7 @@
 import os
 from tkinter import Tk, simpledialog
 from tkinter.filedialog import askdirectory, askopenfilename
+from datetime import datetime, timedelta
 
 import requests
 import xlrd
@@ -29,6 +30,14 @@ def select_file(title):
     Tk().withdraw()  # Hide the main window
     file_path = askopenfilename(title=title)
     return file_path
+
+def convert_excel_date(date_value):
+    base_date = datetime(1900, 1, 1)  # Excel base date
+
+    converted_date = base_date + timedelta(days=date_value)
+
+    formatted_date = converted_date.strftime("%Y-%m-%d")  # Format the date as desired
+    return formatted_date
 
 
 def main():
@@ -64,16 +73,50 @@ def main():
             exit()
 
         workbook = xlrd.open_workbook(excel_exported_db)
-        worksheet = workbook.sheet_by_index(0)
+        automatic_export = workbook.sheet_by_index(0)
+        # TODO update readme
+        manual_export = workbook.sheet_by_index(1)
+
+        manual_export_list = []
+        for i in range(1, manual_export.nrows):
+            sighting_info = {}
+            for j in range(0, manual_export.ncols):
+                col_name = manual_export.cell_value(0, j)
+                sighting_info[col_name] = manual_export.cell_value(i, j)
+            manual_export_list.append(sighting_info)
+
+        # massage the data around for easier manipulation
+        manual_export_dict = {sighting['Image']: sighting for sighting in manual_export_list}
 
         # convert to list of records, each record holds info about one seal (one line from the Excel file)
         json_save = []
-        for j in range(1, worksheet.nrows):
+        sightings_with_pics = []
+        for j in range(1, automatic_export.nrows):
             seal_info = {}
-            for i in range(0, worksheet.ncols):
-                col_name = worksheet.cell_value(0, i)
-                seal_info[col_name] = worksheet.cell_value(j, i)
+
+            for i in range(0, automatic_export.ncols):
+                col_name = automatic_export.cell_value(0, i)
+                seal_info[col_name] = automatic_export.cell_value(j, i)
+
+            # auto_exp[image] matches man_exp[Image], merge the two based on that
+            sighting = manual_export_dict[seal_info['image']]
+            seal_info['sighting_info'] = sighting
+            sightings_with_pics.append(sighting['Image'])
+            seal_info['dt'] = convert_excel_date(seal_info['dt']) if seal_info['dt'] else ''
             json_save.append(seal_info)
+
+        #  save the sightings which do not belong to a record in the automatic export
+        manual_export_list = [sighting for sighting in manual_export_list if sighting['Image'] not in sightings_with_pics]
+
+        # this is EC internal, remove it
+        for sighting in manual_export_list:
+            del sighting['chkReset']
+
+        # for converting multiple databases, this will have to be manually merged
+        if manual_export_list:
+            with open(f'{save_file}_sightings.json', 'w') as f:
+                json.dump(manual_export_list, f, indent=4, separators=(',', ': '))
+
     else:
         print('loading database from %s' % save_file)
         with open(save_file) as f:
@@ -299,21 +342,23 @@ def main():
         assert res.json()['status']['success']
         print('set names for all annots')
 
-        # add comments, append whether the seal is tagged or not to the end of each comment
+        # add comments, append date at end of each comment
         url = base_url + "api/annot/note"
         note_list = []
         for record in json_save:
+            sighting_info = record['sighting_info']
+            sighting_info['comment from database'] = record['comments']
+            sighting_info['date'] = convert_excel_date(sighting_info['date']) if sighting_info['date'] else record['dt']
             if len(record['aids']) == 0:
                 continue
             elif len(record['aids']) == 1:
-                note = record['comments']
-                tagged = 'yes' if record['tagged'] == 1 else 'no'
-                date = record['dt']
-                note_list.append(f'{note}, tagged:{tagged}, date: {date}')
+                note = json.dumps(sighting_info)
+                note_list.append(note)
             else:
                 # more than one seal detected in the picture, unsure which one the original db is referring to
-                tagged = 'yes' if record['tagged'] == 1 else 'no'
-                note_list += [f'unknown annot from image of {record["ID"]}, tagged: {tagged}, date: {record["dt"]}'] * len(record['aids'])
+                sighting_info['name'] = f'unknown seal from image of {record["ID"]}'
+                note = json.dumps(sighting_info)
+                note_list += [note] * len(record['aids'])
         res = requests.put(url, json={'aid_list': aid_list_flattened, 'notes_list': note_list})
         assert res.json()['status']['success']
         print('added comments')
@@ -422,7 +467,7 @@ def main():
         return
 
     # TODO comment this out
-    match_annots()
+    # match_annots()
 
 
 if __name__ == '__main__':

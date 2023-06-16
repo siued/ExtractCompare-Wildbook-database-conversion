@@ -1,11 +1,11 @@
 import json
+import import_database
 
-with open("matching_results2.json") as f:
-    matches = json.load(f)
+with open("../gui/sightings.json") as f:
+    fs = json.load(f)
 
-count = 0
-for match in matches:
-    if match['score_list'] and max(match['score_list']) > 0.1:
-        count += 1
+for record in fs:
+    record['date'] = import_database.convert_excel_date(record['date'])
 
-print(count)
+with open("../gui/sightings.json", "w") as f:
+    json.dump(fs, f, indent=4, separators=(',', ': '))

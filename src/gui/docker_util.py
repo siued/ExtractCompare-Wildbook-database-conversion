@@ -5,7 +5,7 @@ from tkinter.filedialog import askdirectory
 import requests
 
 # TODO: change
-container_name = 'wildbook-ia'
+container_name = 'wildbook-ia-last-chance'
 
 
 def check_docker_running():

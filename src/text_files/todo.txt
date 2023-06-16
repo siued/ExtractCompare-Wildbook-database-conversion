@@ -1,6 +1,4 @@
-test different matching algorithms and compare (run graph/complete for testing maybe?)
-EMAIL SEAL PPL
-make gui work
 
-deal with the undetected pictures
 handle docker crashes
+add separate field for date in gui
+make name consistent in gui (try 007-0106 to see)

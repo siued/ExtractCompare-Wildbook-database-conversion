@@ -1,12 +1,14 @@
 import base64
 import datetime
+import json
 import time
 from tkinter import Tk
 from tkinter.simpledialog import askstring
 
-from PyQt5.QtCore import QUrl
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox, QFileDialog, QDialogButtonBox, QCheckBox, QDialog, QToolBar, QAction, \
-    QComboBox
+from PyQt5.QtCore import QUrl, QSize
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox, \
+    QFileDialog, QDialogButtonBox, QCheckBox, QDialog, QToolBar, QAction, \
+    QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView
 from PyQt5.QtGui import QPixmap, QImage, QIcon, QDesktopServices
 import requests
 import docker_util
@@ -63,6 +65,24 @@ def add_annots_undetected_images(gid_list, server_url):
     print('Added full-picture annotations to all pictures where nothing was detected')
     return zipped_list
 
+def get_gids_by_name(server_url, name):
+    url = f"{server_url}/api/name/dict"
+    res = requests.get(url)
+    assert res.status_code == 200
+    name_dict = res.json()["response"]
+    if name not in name_dict:
+        return [], None
+    nid = name_dict[name][0]
+    gid_list = name_dict[name][1]
+    return gid_list, nid
+
+def get_aid_list_from_gids(server_url, gid_list):
+    url = f"{server_url}/api/image/annot/rowid"
+    res = requests.get(url, json={"gid_list": gid_list})
+    assert res.status_code == 200
+    aid_list = [aid for aids in res.json()["response"] for aid in aids]
+    return aid_list
+
 class SealRecognitionApp(QWidget):
     server_url: str
 
@@ -70,9 +90,10 @@ class SealRecognitionApp(QWidget):
         super().__init__()
         self.setWindowTitle("Seal Pattern Recognition")
         self.resize(200, 150)
+        self.server_url = f"http://localhost:{port}"
         self.initUI(port)
 
-    def initUI(self,  port):
+    def initUI(self, port):
         # Create widgets
         self.server_label = QLabel("Wildbook Server URL:")
         self.server_input = QLineEdit()
@@ -80,6 +101,10 @@ class SealRecognitionApp(QWidget):
         self.upload_button = QPushButton("Upload Images")
         self.upload_button.clicked.connect(self.uploadImages)
         self.toolbar = QToolBar("Toolbar")
+        self.sightingsButton = QPushButton("View Sightings")
+        self.sightingsButton.clicked.connect(self.viewSightings)
+        self.changeDetailsButton = QPushButton("Change Seal Details")
+        self.changeDetailsButton.clicked.connect(self.changeSealDetails)
 
         # Set layout
         layout = QVBoxLayout()
@@ -87,6 +112,8 @@ class SealRecognitionApp(QWidget):
         layout.addWidget(self.server_label)
         layout.addWidget(self.server_input)
         layout.addWidget(self.upload_button)
+        layout.addWidget(self.sightingsButton)
+        layout.addWidget(self.changeDetailsButton)
         self.setLayout(layout)
 
         # Create an action for the website button
@@ -95,6 +122,123 @@ class SealRecognitionApp(QWidget):
 
         # Add the action to the toolbar
         self.toolbar.addAction(website_action)
+
+    def changeSealDetails(self):
+        dialog = QDialog()
+        dialog.setWindowTitle("Change Seal Details")
+        layout = QVBoxLayout()
+
+        name_label = QLabel("Name:")
+        name_textbox = QLineEdit()
+        layout.addWidget(name_label)
+        layout.addWidget(name_textbox)
+
+        gender_label = QLabel("Gender:")
+        gender_dropdown = QComboBox()
+        gender_dropdown.addItems(['female', 'male', 'unknown'])
+        layout.addWidget(gender_label)
+        layout.addWidget(gender_dropdown)
+
+        button = QPushButton("Submit")
+
+        def submit():
+            gid_list, nid = get_gids_by_name(self.server_url, name_textbox.text())
+
+            if not nid:
+                self.showResult("Name not found")
+            else:
+                # change the gender for the given name
+                url = f"{self.server_url}/api/name/sex"
+                sex = 0 if gender_dropdown.currentText() == 'female' else 1 if gender_dropdown.currentText() == 'male' else 2
+                res = requests.put(url, json={'name_rowid_list': [nid], 'name_sex_list': [sex]})
+                assert res.status_code == 200
+                print('Gender changed successfully for ' + name_textbox.text())
+
+            dialog.close()
+
+        button.clicked.connect(submit)
+        layout.addWidget(button)
+
+        dialog.setLayout(layout)
+        dialog.exec_()
+
+    def viewSightings(self):
+        widget = QDialog()
+        widget.setWindowTitle("Sightings")
+        widget.resize(800, 800)
+        layout = QVBoxLayout()
+
+        label = QLabel("Enter name to view sightings:")
+        layout.addWidget(label)
+
+        self.name_input = QLineEdit()
+        layout.addWidget(self.name_input)
+
+        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button.clicked.connect(lambda: self.updateSightingsTable(widget))
+        layout.addWidget(self.refresh_button)
+
+        self.sightingsTable = QTableWidget()
+        headers = ["Date", "Location", " Comments", "Photo",  "With pup"]
+        self.sightingsTable.setColumnCount(len(headers))
+        self.sightingsTable.setRowCount(0)
+
+        self.sightingsTable.setHorizontalHeaderLabels(headers)
+        self.sightingsTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.sightingsTable.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.sightingsTable.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.sightingsTable.setMaximumWidth(widget.width())
+
+        layout.addWidget(self.sightingsTable)
+        widget.setLayout(layout)
+        widget.exec_()
+
+    def updateSightingsTable(self, widget):
+        name = self.name_input.text()
+        sightings = self.getSightings(name)
+        self.sightingsTable.setRowCount(len(sightings))
+        for i, sighting in enumerate(sightings):
+            self.sightingsTable.setItem(i, 0, QTableWidgetItem(sighting["date"]))
+            self.sightingsTable.setItem(i, 1, QTableWidgetItem(sighting["location"]))
+            self.sightingsTable.setItem(i, 2, QTableWidgetItem(sighting["comments"]))
+            self.sightingsTable.setItem(i, 3, QTableWidgetItem(sighting["with_photo"]))
+            self.sightingsTable.setItem(i, 4, QTableWidgetItem(sighting["with_pup"]))
+        self.sightingsTable.resizeColumnsToContents()
+        self.sightingsTable.resizeRowsToContents()
+
+    def getSightings(self, name):
+        gid_list, nid = get_gids_by_name(self.server_url, name)
+
+        sighting_list = []
+
+        if gid_list:
+            aid_list = get_aid_list_from_gids(self.server_url, gid_list)
+
+            url = f"{self.server_url}/api/annot/name/rowid"
+            res = requests.get(url, json={"aid_list": aid_list})
+            assert res.status_code == 200
+            nid_list = res.json()["response"]
+
+            url = f"{self.server_url}/api/annot/note"
+            res = requests.get(url, json={"aid_list": aid_list})
+            assert res.status_code == 200
+            note_list = res.json()["response"]
+
+            for sighting_nid, note in zip(nid_list, note_list):
+                if sighting_nid == nid:
+                    note = json.loads(note)
+                    sighting_list.append({"date": note["date"], "location": note["location"], "comments": note["comments"], "with_photo": 'Yes', "with_pup": note["with_pup"]})
+
+        with open('sightings.json') as f:
+            sightings = json.load(f)
+
+        for sighting in sightings:
+            if sighting["orig_ID"] == name or sighting["id"] == name:
+                sighting_list.append({"date": sighting["date"], "location": sighting["location"], "comments": sighting["comments"], "with_photo": 'No', "with_pup": sighting["with_pup"]})
+
+        sighting_list.sort(key=lambda x: x["date"])
+
+        return sighting_list
 
     def openWildbook(self):
         # Open the website in the default web browser
@@ -359,9 +503,6 @@ class SealRecognitionApp(QWidget):
         layout.addWidget(comments_label)
         layout.addWidget(comments_textbox)
 
-        tagged_checkbox = QCheckBox("Tagged")
-        layout.addWidget(tagged_checkbox)
-
         # Populate the form fields with the details from the best match if available
         if details != {}:
             name_textbox.setText(details['name'])
@@ -383,8 +524,7 @@ class SealRecognitionApp(QWidget):
                 'age': age_dropdown.currentText(),
                 'viewpoint': viewpoint_dropdown.currentText(),
                 'quality': 'excellent',
-                'comments': comments_textbox.text(),
-                'tagged': 'yes' if tagged_checkbox.isChecked() else 'no'
+                'comments': comments_textbox.text()
             }
             dialog.close()
             self.processSealDetails(form_values, aid)
@@ -444,11 +584,12 @@ class SealRecognitionApp(QWidget):
         res = requests.put(url, json={'aid_list': [aid], 'name_list': [form_values['name']]})
         assert res.status_code == 200
 
-        # add comments, append whether the seal is tagged or not to the end of each comment
-        url = f"{self.server_url}/api/annot/note"
-        comment = form_values['comments'] + ', tagged: ' + form_values['tagged']
-        res = requests.put(url, json={'aid_list': [aid], 'notes_list': [comment]})
-        assert res.status_code == 200
+        # add comments
+        comment = form_values['comments']
+        if comment != '':
+            url = f"{self.server_url}/api/annot/note"
+            res = requests.put(url, json={'aid_list': [aid], 'notes_list': [comment]})
+            assert res.status_code == 200
 
         # set species
         url = f"{self.server_url}/api/annot/species"
@@ -484,9 +625,10 @@ class SealRecognitionApp(QWidget):
         assert res.status_code == 200
 
         # set viewpoint
-        url = f"{self.server_url}/api/annot/viewpoint"
-        res = requests.put(url, json={'aid_list': [aid], 'viewpoint_list': [form_values['viewpoint']]})
-        assert res.status_code == 200
+        if form_values['viewpoint']:
+            url = f"{self.server_url}/api/annot/viewpoint"
+            res = requests.put(url, json={'aid_list': [aid], 'viewpoint_list': [form_values['viewpoint']]})
+            assert res.status_code == 200
 
         self.showResult('Successfully updated the details for annotation with ID: ' + str(aid))
 
