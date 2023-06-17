@@ -206,3 +206,8 @@
 - added change seal details button, changing gender is now possible
 - extracted  sighting data from databases, added it to json files, added it  as comments  in the db, added all the ones that dont go into the db into a separate file
 - added sighting data without photos to sighting view
+
+**17.6**
+- adding option to add sightings with no photos
+- changing how uploading new sighting pictures works
+- reformatting code to be more readable and into  multiple files
