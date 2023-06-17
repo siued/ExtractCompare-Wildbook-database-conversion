@@ -211,3 +211,6 @@
 - adding option to add sightings with no photos
 - changing how uploading new sighting pictures works
 - reformatting code to be more readable and into  multiple files
+- added automatic renaming if two differently named seals get matched
+- added manual rename option
+- debugging and testing the gui

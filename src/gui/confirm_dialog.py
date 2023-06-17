@@ -1,11 +1,8 @@
-import base64
 import json
 
-import requests
-from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QDialog, QPushButton
 
-import upload_images
+import wildbook_util
 from fetch_image import fetchImage, setPixmapFromImage
 
 
@@ -38,13 +35,13 @@ class ConfirmDialog(QDialog):
             layout.addWidget(image1_label)
             layout.addWidget(image2_label)
 
-            note = upload_images.get_comment(best_match, server_url)
+            note = wildbook_util.get_comment(best_match, server_url)
             note = json.loads(note)
-            comment_label = QLabel(f'Sighting: name: {note["name"]}, date: {note["date"]}, location: {note["location"]}, '
+            comment_label = QLabel(f'Name: {note["id"]}, date: {note["date"]}, location: {note["location"]}, '
                                    f'comments: {note["comments"]}')
             layout.addWidget(comment_label)
         else:
-            raise Exception("Could not fetch images")
+            raise Exception("Could not fetch images for confirm dialog")
 
         # Create buttons for confirmation
         confirm_button = QPushButton("Confirm")
@@ -57,5 +54,3 @@ class ConfirmDialog(QDialog):
         cancel_button.clicked.connect(self.reject)
 
         self.setLayout(layout)
-        # TODO rename the matched seals if needed
-

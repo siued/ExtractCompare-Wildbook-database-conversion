@@ -4,25 +4,7 @@ from PyQt5.QtWidgets import QFileDialog
 import docker_util
 from add_sighting_details import SealSightingDialog
 from confirm_dialog import ConfirmDialog
-
-
-def get_uuids(gid_list, server_url):
-    url = f"{server_url}/api/image/uuid"
-    res = requests.get(url, json={'gid_list': gid_list})
-    assert res.status_code == 200
-    uuid_list = [uuid['__UUID__'] for uuid in res.json()['response']]
-    return uuid_list
-
-
-def get_comment(aid, server_url):
-    url = f"{server_url}/api/annot/note"
-    res = requests.get(url, json={'aid_list': [aid]})
-    assert res.status_code == 200
-    return res.json()['response'][0]
-
-
-def rename_seal(old_name, new_name):
-    pass
+from wildbook_util import get_uuids
 
 
 def add_annots_undetected_images(gid_list, server_url):
@@ -88,7 +70,10 @@ def uploadImages(server_url):
             matches = matchImage(server_url, list_to_match)
 
             print('Matches found: ' + str(matches))
+
             for match in matches:
+                confirmed = False
+                confirmed_match_aid = None
                 # check if any matches were found
                 if match['daid_list']:
                     qaid = match['qaid']
@@ -98,11 +83,16 @@ def uploadImages(server_url):
                     print('qaid: ' + str(qaid) + ', best match: ' + str(daid_list[best_match_index]) +
                           ', score: ' + str(max(score_list)))
                     best_match_aid = daid_list[best_match_index]
-                    confirm_dialog = ConfirmDialog(qaid, best_match_aid, max(score_list), server_url)
+                    try:
+                        confirm_dialog = ConfirmDialog(qaid, best_match_aid, max(score_list), server_url)
+                    except Exception as e:
+                        print(e)
+                        continue
                     confirmed = confirm_dialog.exec_()
                     print('Match confirmed' if confirmed else 'Match rejected')
                     if confirmed:
                         sighting_dialog = SealSightingDialog(qaid, server_url, best_match_aid)
+                        confirmed_match_aid = best_match_aid
                     else:
                         sighting_dialog = SealSightingDialog(qaid, server_url)
                 else:
@@ -110,6 +100,8 @@ def uploadImages(server_url):
                     sighting_dialog = SealSightingDialog(match["qaid"], server_url)
                 sighting_dialog.exec_()
                 sighting = sighting_dialog.getSighting()
+                if confirmed:
+                    sighting['confirmed_aid'] = confirmed_match_aid
                 sightings.append(sighting)
             for sighting in sightings:
                 sighting['image'] = 'yes'
@@ -186,71 +178,3 @@ def matchImage(server_url, aid_list):
     else:
         print("Matching failed")
         return None
-
-
-def uploadSealDetails(form_values, aid, server_url):
-    # Process the seal details and send them to the server using the API endpoint /api/annot/<id>
-    # For example:
-    print(f"Processing seal details: {form_values}")
-
-    url = f"{server_url}/api/annot/interest"
-    res = requests.put(url, json={'aid_list': [aid], 'flag_list': [1]})
-    assert res.status_code == 200
-
-    # set all annots as exemplars
-    url = f"{server_url}/api/annot/exemplar"
-    res = requests.put(url, json={'aid_list': [aid], 'flag_list': [1]})
-    assert res.status_code == 200
-
-    # set names for all annots
-    url = f"{server_url}/api/annot/name"
-    res = requests.put(url, json={'aid_list': [aid], 'name_list': [form_values['name']]})
-    assert res.status_code == 200
-
-    # add comments
-    comment = form_values['comments']
-    if comment != '':
-        url = f"{server_url}/api/annot/note"
-        res = requests.put(url, json={'aid_list': [aid], 'notes_list': [comment]})
-        assert res.status_code == 200
-
-    # set species
-    url = f"{server_url}/api/annot/species"
-    res = requests.put(url, json={'aid_list': [aid], 'species_text_list': ['harbour_seal']})
-    assert res.status_code == 200
-
-    # set gender for all annots
-    url = f"{server_url}/api/annot/sex"
-    # enum: 0: female, 1: male, 2: unknown
-    gender = 0 if form_values['gender'] == 'female' else 1 if form_values['gender'] == 'male' else 2
-    res = requests.put(url, json={'aid_list': [aid], 'name_sex_list': [gender]})
-    assert res.status_code == 200
-
-    # set quality as good
-    # enum: 1: junk until 5: excellent
-    url = f"{server_url}/api/annot/quality"
-    res = requests.put(url, json={'aid_list': [aid], 'annot_quality_list': [5]})
-    assert res.status_code == 200
-
-    # set ages in months
-    # assuming that pup: 0-3y, juvenile: 3-5y, adult: 5-30y
-    age_min_dict = {'pup': 0, 'juv': 36, 'adult': 60, 'unknown': -1, '': -1}
-    age_max_dict = {'pup': 36, 'juv': 60, 'adult': 360, 'unknown': -1, '': -1}
-
-    url = f"{server_url}/api/annot/age/months/min"
-    age = age_min_dict[form_values['age']]
-    res = requests.put(url, json={'aid_list': [aid], 'annot_age_months_est_min_list': [age]})
-    assert res.status_code == 200
-
-    url = f"{server_url}/api/annot/age/months/max"
-    age = age_max_dict[form_values['age']]
-    res = requests.put(url, json={'aid_list': [aid], 'annot_age_months_est_max_list': [age]})
-    assert res.status_code == 200
-
-    # set viewpoint
-    if form_values['viewpoint']:
-        url = f"{server_url}/api/annot/viewpoint"
-        res = requests.put(url, json={'aid_list': [aid], 'viewpoint_list': [form_values['viewpoint']]})
-        assert res.status_code == 200
-
-    print('Successfully uploaded the details for annotation with ID: ' + str(aid) + 'to the database')

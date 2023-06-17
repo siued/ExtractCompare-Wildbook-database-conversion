@@ -4,15 +4,18 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QTableWidget, QHeaderView, QTableWidgetItem, QHBoxLayout, \
     QPushButton
 
-from upload_images import uploadImages, uploadSealDetails
+from wildbook_util import uploadSealDetails, merge_names
+from upload_images import uploadImages
 
 
 class AddSightingsDialog(QDialog):
     sightings: list
+    server_url: str
 
     def __init__(self,  date, location, server_url):
         super().__init__()
         self.sightings = []
+        self.server_url = server_url
         self.setWindowTitle("Add Sightings")
         self.resize(800, 800)
         layout = QVBoxLayout()
@@ -43,7 +46,7 @@ class AddSightingsDialog(QDialog):
         upload_images_button.clicked.connect(lambda: self.uploadAndAddImages(server_url, date, location))
         button_layout.addWidget(upload_images_button)
 
-        done_button = QPushButton("Done")
+        done_button = QPushButton("Save")
         done_button.clicked.connect(lambda: self.addSightings(date, location))
         button_layout.addWidget(done_button)
 
@@ -69,16 +72,8 @@ class AddSightingsDialog(QDialog):
             sighting['date'] = date
             sighting['location'] = location
             self.sightings.append(sighting)
-            rowcount = -1
-            # find the first empty row
-            for row in range(self.add_sightings_table.rowCount()):
-                if self.add_sightings_table.item(row, 0).text() == '':
-                    rowcount = row
-                    break
-            # if no empty row was found, add a new row
-            if rowcount == -1:
-                row_count = self.add_sightings_table.rowCount()
-                self.add_sightings_table.setRowCount(row_count + 1)
+            self.add_sightings_table.setRowCount(self.add_sightings_table.rowCount() + 1)
+            row_count = self.add_sightings_table.rowCount() - 1
             self.add_sightings_table.setItem(row_count, 0, QTableWidgetItem(sighting["id"]))
             self.add_sightings_table.setItem(row_count, 1, QTableWidgetItem(sighting["comments"]))
             self.add_sightings_table.setItem(row_count, 2, QTableWidgetItem(sighting["with_pup"]))
@@ -102,7 +97,10 @@ class AddSightingsDialog(QDialog):
             with_pup = with_pup_item.text() if with_pup_item else ""
             age = age_item.text() if age_item else ""
             gender = gender_item.text() if gender_item else ""
-            image = 'yes' if image_item else "no"
+            image = image_item.text() if image_item else ""
+            # the sightings with images are already in self.sightings because they get added in uploadAndAddImages
+            if image == 'yes':
+                continue
 
             sighting_details = {
                 "orig_ID": name,
@@ -113,7 +111,7 @@ class AddSightingsDialog(QDialog):
                 "gender": gender,
                 "date": date,
                 'location': location,
-                'Image': image,
+                'image': image,
                 'viewpoint': '',
                 'aid': ''
             }
@@ -125,15 +123,30 @@ class AddSightingsDialog(QDialog):
         with open('sightings.json') as f:
             sightings_list = json.load(f)
 
-        sightings_list.extend(self.sightings)
+        sightings_without_image = [sighting for sighting in self.sightings if sighting['image'] == 'no' or sighting['image'] == '']
+        sightings_with_image = [sighting for sighting in self.sightings if sighting['image'] == 'yes']
+        sightings_list.extend(sightings_without_image)
 
         # with open('sightings.json', 'w') as f:
         #     json.dump(sightings_list, f, indent=4, separators=(',', ': '))
 
-        # for sighting in self.sightings:
-        #     if sighting['image'] == 'yes':
-        #         uploadSealDetails()
+        for sighting in sightings_with_image:
+            seal_details = {
+                'name': sighting['id'],
+                'comments': json.dumps(sighting),
+                'gender': sighting['gender'],
+                'age': sighting['age'],
+                'viewpoint': sighting['viewpoint']
+            }
+            uploadSealDetails(seal_details, sighting['aid'], self.server_url)
 
-        print(f'Successfully added {len(self.sightings)} sightings to sightings.json')
+            if 'confirmed_aid' in sighting:
+                confirmed_aid = sighting['confirmed']
+                old_name, new_name = merge_names(sighting['aid'], confirmed_aid, self.server_url)
+                if old_name != new_name:
+                    print(f'Successfully changed {old_name} to {new_name}')
+
+        print(f'Successfully added {len(sightings_with_image)} sightings to Wildbook')
+        print(f'Successfully added {len(sightings_without_image)} sightings to sightings.json')
 
         self.close()

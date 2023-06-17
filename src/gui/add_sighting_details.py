@@ -1,40 +1,12 @@
-import requests
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFormLayout, QComboBox
 
 from fetch_image import fetchImage, setPixmapFromImage
-
-
-def fetchSealDetails(aid, server_url):
-    seal_details = {}
-
-    url = f"{server_url}/api/annot/sex"
-    res = requests.get(url, json={'aid_list': [aid]})
-    print(res.json())
-    assert res.status_code == 200
-    gender = res.json()['response'][0]
-    seal_details['gender'] = 'female' if gender == 0 else 'male' if gender == 1 else 'unknown'
-
-    url = f"{server_url}/api/annot/age/months/min"
-    res = requests.get(url, json={'aid_list': [aid]})
-    assert res.status_code == 200
-    seal_details['age'] = {'min': res.json()['response'][0]}
-
-    url = f"{server_url}/api/annot/age/months/max"
-    res = requests.get(url, json={'aid_list': [aid]})
-    assert res.status_code == 200
-    seal_details['age']['max'] = res.json()['response'][0]
-
-    url = f"{server_url}/api/annot/name/text"
-    res = requests.get(url, json={'aid_list': [aid]})
-    print(res.json())
-    assert res.status_code == 200
-    seal_details['name'] = res.json()['response'][0]
-
-    return seal_details
+from wildbook_util import fetchSealDetails
 
 
 class SealSightingDialog(QDialog):
     sighting: dict
+    best_match_aid: str
 
     def __init__(self, qaid, server_url, best_match_aid=None):
         super().__init__()
@@ -48,6 +20,7 @@ class SealSightingDialog(QDialog):
             best_match_details = None
 
         self.sighting = {'aid': qaid}
+        self.best_match_aid = best_match_aid
 
         layout = QVBoxLayout(self)
 
@@ -124,5 +97,4 @@ class SealSightingDialog(QDialog):
         self.hide()
 
     def getSighting(self):
-        print(self.sighting)
         return self.sighting
