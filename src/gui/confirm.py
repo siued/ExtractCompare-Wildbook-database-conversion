@@ -3,7 +3,7 @@ import json
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QDialog, QPushButton
 
 import wildbook_util
-from fetch_image import fetchImage, setPixmapFromImage
+from src.gui.wildbook_util import setPixmapFromImage, fetchImage
 
 
 class ConfirmDialog(QDialog):

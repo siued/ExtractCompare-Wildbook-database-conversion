@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFormLayout, QComboBox
 
-from fetch_image import fetchImage, setPixmapFromImage
+from src.gui.wildbook_util import setPixmapFromImage, fetchImage
 from wildbook_util import fetchSealDetails
 
 

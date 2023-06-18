@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QFileDialog
 
 import docker_util
 from add_sighting_details import SealSightingDialog
-from confirm_dialog import ConfirmDialog
+from confirm import ConfirmDialog
 from wildbook_util import get_uuids
 
 

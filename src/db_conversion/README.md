@@ -12,6 +12,18 @@ The EC database is a Microsoft Access database. If you are using ExtractCompare,
 To use this software, you will need to export it to an Excel file. In the MS Access interface, click on 'Export  to Excel', then a window should open asking where to save it. The app can be buggy sometimes, so if nothing happens, 
 try clicking on it again. If that doesn't get it to export, close MS Access and then reopen the database. Remember the Excel file location, as you will need it later. Also remember the location of the original database file, because you will need to enter the location of the 'newpic' folder where all the photos are stored. 
 
+### IMPORTANT
+If you wish to keep the comments and sightings details stored in EC, you will need to follow the following steps:
+1. Open the EC database in MS Access
+2. Click 'View sightings/images'
+3. in the top left, click on 'view' and select 'datasheet view'
+4. Select all the rows in the table (Ctrl+A)
+5. Right-click on the selected rows and click 'copy' or press 'Ctrl+C'
+6. Open the exported database in Excel
+7. Create a new sheet (click on the plus sign at the bottom left of the screen next to 'SYSTEM_ToExcel')
+8. Paste the copied rows into the new sheet (Ctrl+V)
+9. Save the Excel file
+
 ## Setting up Docker and Wildbook
 1. Download Docker Desktop (https://www.docker.com/products/docker-desktop/). If the link doesn't lead anywhere, search for Docker  and download from there
 2. Open the docker desktop installer you downloaded and follow the instructions. If your computer supports hyper-v, you can use Docker with it. If not, you will have to install WSL2. 
@@ -36,10 +48,11 @@ Once you have your database exported to Excel and your Wildbook server running, 
     - To run the source code you will need a Python interpreter. 
 2. Run the executable. In the popups, select all the required paths. 
 3. The executable will create a json file with the seal information. Do not remove this file during the conversion as you might lose progress if you do so. 
-4. Now simply wait for the conversion to finish. It may take several hours to even days, depending on the size of your database (around 2500 images took 8+ hours on a powerful 2020 desktop computer). If you think nothing is happening, you can check the wildbook container's logs. Go to  Docker, containers and click on the wildbook container. You will see a live feed of logs form wildbook, indicating what is happening. 
-5. If you are matching the newly converted database against an existing one in Wildbook, expect this to take a long time as well. Each picture has to be preprocessed to be ready to be matched and this takes a long time. Once the preprocessing is done, it is saved and will not need to be redone. So the first matching process on a new set of images will always take much longer than any subsequent matching processes. 
-6. Once the conversion is finished, you can go to the Wildbook UI and check that the database was uploaded correctly and view the pictures. You can also safely remove the .json file. If you wish to keep the .json file, you can use it with Python or other programing languages to analyze your database. 
-7. If you wish to convert another database, you can simply run the executable again and give it the other database's Excel file and a different name  for the .json file.
+4. The program will also create a sightings.json file where information about sightings without an attached image are stored. Keep this file if you wish to keep the sighting information. When using the GUI app, this file must be placed in the same directory as the executable so the sightings are found. 
+5. Now simply wait for the conversion to finish. It may take several hours to even days, depending on the size of your database (around 2500 images took 8+ hours on a powerful 2020 desktop computer). If you think nothing is happening, you can check the wildbook container's logs. Go to  Docker, containers and click on the wildbook container. You will see a live feed of logs form wildbook, indicating what is happening. 
+6. If you are matching the newly converted database against an existing one in Wildbook, expect this to take a long time as well. Each picture has to be preprocessed to be ready to be matched and this takes a long time. Once the preprocessing is done, it is saved and will not need to be redone. So the first matching process on a new set of images will always take much longer than any subsequent matching processes. 
+7. Once the conversion is finished, you can go to the Wildbook UI and check that the database was uploaded correctly and view the pictures. You can also safely remove the .json file. If you wish to keep the .json file, you can use it with Python or other programing languages to analyze your database. 
+8. If you wish to convert another database, you can simply run the executable again and give it the other database's Excel file and a different name  for the .json file.
 
 ## Matching
 There  is an option to photo-match the entire freshly uploaded database against the pre-existing Wildbook database. This is disabled by default, because there are various ways to treat the results. If you wish to do this, you will have to download the source code and enable the matching function manually. 
@@ -59,6 +72,7 @@ If you have any questions, anything is not working or you would like to report a
 - gid - id of an uploaded picture
 - annotation - a section of an image with an object of interest in it (seal in this case)
 - aid - id of an annotation in a picture  (many-to-one relationship with gid)
+- nid - id of a seal (name) in the database
 - uuid - unique id of any object in the database (ex. annotation, picture, graph, job, etc.)
 - detect: request for animal detection in an image (find annotation in image)
 - query: request for the matching engine (identify matching annotations)

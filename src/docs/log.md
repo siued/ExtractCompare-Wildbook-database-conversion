@@ -214,3 +214,6 @@
 - added automatic renaming if two differently named seals get matched
 - added manual rename option
 - debugging and testing the gui
+
+**18.6**
+- edited readme's to represent changes

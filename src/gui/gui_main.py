@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButto
 
 import docker_util
 from add_sightings_dialog import AddSightingsDialog
-from change_seal_details_dialog import ChangeSealDetailsDialog
+from change_seal_details import ChangeSealDetailsDialog
 from view_sightings import ViewSightingsDialog
 
 

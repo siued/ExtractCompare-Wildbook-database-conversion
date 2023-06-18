@@ -1,6 +1,6 @@
-import requests
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QLineEdit, QComboBox, QPushButton, QDialog
 
+from src.gui.wildbook_util import change_gender
 from wildbook_util import get_gids_by_name, rename_seal
 
 
@@ -39,10 +39,7 @@ class ChangeSealDetailsDialog(QDialog):
                 print("Name not found, no details changed")
             else:
                 # change the gender for the given name
-                url = f"{self.server_url}/api/name/sex"
-                sex = 0 if gender_dropdown.currentText() == 'female' else 1 if gender_dropdown.currentText() == 'male' else 2
-                res = requests.put(url, json={'name_rowid_list': [nid], 'name_sex_list': [sex]})
-                assert res.status_code == 200
+                change_gender(nid, self.server_url, gender_dropdown.currentText())
                 print('Gender changed successfully for ' + old_name_textbox.text())
 
                 if new_name_textbox.text():
