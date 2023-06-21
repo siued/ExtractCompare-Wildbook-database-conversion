@@ -74,7 +74,6 @@ def main():
 
         workbook = xlrd.open_workbook(excel_exported_db)
         automatic_export = workbook.sheet_by_index(0)
-        # TODO update readme
         manual_export = workbook.sheet_by_index(1)
 
         manual_export_list = []
@@ -466,7 +465,6 @@ def main():
             json.dump(response, f, indent=4, separators=(',', ': '))
         return
 
-    # TODO comment this out
     # match_annots()
 
 

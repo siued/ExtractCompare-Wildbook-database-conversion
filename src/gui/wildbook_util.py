@@ -13,11 +13,12 @@ def get_uuids(gid_list, server_url):
     return uuid_list
 
 
-def get_comment(aid, server_url):
+# get comments for a list of aids
+def get_comments(aid_list, server_url):
     url = f"{server_url}/api/annot/note"
-    res = requests.get(url, json={'aid_list': [aid]})
+    res = requests.get(url, json={'aid_list': aid_list})
     assert res.status_code == 200
-    return res.json()['response'][0]
+    return res.json()['response']
 
 
 def rename_seal(old_name, new_name, server_url):
@@ -36,8 +37,11 @@ def rename_seal(old_name, new_name, server_url):
     res = requests.put(url, json={'aid_list': aids_to_rename, 'name_list': [new_name] * len(aids_to_rename)})
     assert res.status_code == 200
 
-    with open('sightings.json') as f:
-        sightings = json.load(f)
+    try:
+        with open('sightings.json') as f:
+            sightings = json.load(f)
+    except FileNotFoundError:
+        sightings = []
 
     for sighting in sightings:
         if sighting['id'] == old_name:
@@ -54,7 +58,9 @@ def get_gids_by_name(server_url, name):
     assert res.status_code == 200
     name_dict = res.json()["response"]
     if name not in name_dict:
-        return [], None
+        name = ' '.join([word.capitalize() for word in name.split(' ')])
+        if name not in name_dict:
+            return [], None
     nid = name_dict[name][0]
     gid_list = name_dict[name][1]
     return gid_list, nid
@@ -73,6 +79,14 @@ def get_aid_list_from_gids(server_url, gid_list):
     assert res.status_code == 200
     aid_list = [aid for aids in res.json()["response"] for aid in aids]
     return aid_list
+
+
+# get all valid aids
+def get_aids(server_url):
+    url = f"{server_url}/api/annot"
+    res = requests.get(url)
+    assert res.status_code == 200
+    return res.json()["response"]
 
 
 # returns sightings sorted by date, newest first
@@ -97,14 +111,31 @@ def get_sightings_from_name(name, server_url):
         for sighting_nid, note in zip(nid_list, note_list):
             if sighting_nid == nid:
                 note = json.loads(note)
-                sighting_list.append({"date": note["date"], "location": note["location"], "comments": note["comments"], "with_photo": 'Yes', "with_pup": note["with_pup"], 'name': note['id'], 'age': note['age']})
-
-    with open('sightings.json') as f:
-        sightings = json.load(f)
+                sighting_list.append({"date": note["date"],
+                                      "location": note["location"],
+                                      "comments": note["comments"],
+                                      "with_photo": 'Yes',
+                                      "with_pup": note["with_pup"],
+                                      'name': note['id'],
+                                      'age': note['age'],
+                                      'old_name': note['orig_ID']})
+    try:
+        with open('sightings.json') as f:
+            sightings = json.load(f)
+    except FileNotFoundError:
+        sightings = []
 
     for sighting in sightings:
         if sighting["orig_ID"] == name or sighting["id"] == name:
-            sighting_list.append({"date": sighting["date"], "location": sighting["location"], "comments": sighting["comments"], "with_photo": 'No', "with_pup": sighting["with_pup"], 'name': sighting['id'], 'age': sighting['age']})
+            sighting_list.append({"date": sighting["date"],
+                                  "location": sighting["location"],
+                                  "comments": sighting["comments"],
+                                  "with_photo": 'No',
+                                  "with_pup": sighting["with_pup"],
+                                  'name': sighting['id'],
+                                  'age': sighting['age'],
+                                  'old_name': sighting['orig_ID']
+                                  })
 
     sighting_list.sort(key=lambda x: x["date"], reverse=True)
 
@@ -174,8 +205,6 @@ def fetchSealDetails(aid, server_url):
 
 # takes dict {name, comments, age, viewpoint, gender}
 def uploadSealDetails(form_values, aid, server_url):
-    # Process the seal details and send them to the server using the API endpoint /api/annot/<id>
-    # For example:
     print(f"Processing seal details: {form_values}")
 
     url = f"{server_url}/api/annot/interest"

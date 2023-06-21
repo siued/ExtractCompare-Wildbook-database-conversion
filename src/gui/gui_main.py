@@ -1,6 +1,4 @@
 import time
-from tkinter import Tk
-from tkinter.simpledialog import askstring
 
 from PyQt5.QtCore import QUrl, QDate
 from PyQt5.QtGui import QDesktopServices
@@ -8,18 +6,26 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButto
     QDialogButtonBox, QDialog, QDateEdit
 
 import docker_util
-from add_sightings_dialog import AddSightingsDialog
+from add_sightings import AddSightingsDialog
 from change_seal_details import ChangeSealDetailsDialog
+from other_util import show_message
+from export_to_excel import export_to_excel
 from view_sightings import ViewSightingsDialog
 
 
 class SealRecognitionApp(QWidget):
     server_url: str
 
+
     def __init__(self, port):
         super().__init__()
         self.setWindowTitle("Seal Pattern Recognition")
-        self.resize(200, 150)
+        self.resize(500, 500)
+
+        font = self.font()
+        font.setPointSize(18)
+        self.setFont(font)
+
         self.server_url = f"http://localhost:{port}"
 
         self.openWildbookButton = QPushButton("Open Wildbook")
@@ -34,11 +40,15 @@ class SealRecognitionApp(QWidget):
         self.changeDetailsButton = QPushButton("Change Seal Details")
         self.changeDetailsButton.clicked.connect(self.changeSealDetails)
 
+        self.exportButton = QPushButton("Export to Excel")
+        self.exportButton.clicked.connect(lambda: export_to_excel(self.server_url))
+
         layout = QVBoxLayout()
         layout.addWidget(self.openWildbookButton)
         layout.addWidget(self.upload_button)
         layout.addWidget(self.sightingsButton)
         layout.addWidget(self.changeDetailsButton)
+        layout.addWidget(self.exportButton)
         self.setLayout(layout)
 
     def viewSightings(self):
@@ -99,34 +109,27 @@ class SealRecognitionApp(QWidget):
         msg_box.exec_()
 
     def closeEvent(self, event):
-        # TODO: uncomment for production
         # docker_util.stop_wbia_container()
         self.close()
         super().closeEvent(event)
 
 
-# use tk for this because it's easier
-def get_text_input(title, textfield):
-    Tk().withdraw()  # Hide the main window
-    text_input = askstring(textfield, title)
-    return text_input
-
-
 if __name__ == "__main__":
     # docker_util assumes the name of the Wildbook container is 'wildbook-ia'
     default_port = 8081
-    port = get_text_input(f'Enter the port number of the Wildbook server, leave blank for default port {default_port}',
-                          'Port number')
-    if port is None:
+    if not docker_util.ensure_docker_wbia(default_port):
+        show_message('Docker error', 'ERROR: Please make sure Docker Desktop is running and try again')
         exit()
-    if port == '':
-        port = default_port
-    if not docker_util.ensure_docker_wbia(port):
-        print(f'ERROR: Please make sure Docker Desktop is running and try again. Also make sure you typed in the '
-              f'correct port number: {port}')
-        time.sleep(2)
-        exit(1)
     app = QApplication([])
-    seal_recognition_app = SealRecognitionApp(port)
+    seal_recognition_app = SealRecognitionApp(default_port)
     seal_recognition_app.show()
-    app.exec_()
+    try:
+        app.exec_()
+    except Exception as e:
+        time = time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime())
+        print(str(e))
+        with open(f'crash_log_{time}.txt', 'a') as f:
+            f.write(str(e))
+            f.write('\n')
+        show_message('Error', 'An error occurred. The app will now close. You can find a crash log in the '
+                                    'directory where the app is located. ')

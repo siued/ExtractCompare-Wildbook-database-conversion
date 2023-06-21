@@ -1,5 +1,7 @@
 import json
 
-import wildbook_util
+name = 'boob boob poop'
 
-wildbook_util.rename_seal('15-030-0', '15-030')
+name = ' '.join([word.capitalize() for word in name.split(' ')])
+
+print(name)

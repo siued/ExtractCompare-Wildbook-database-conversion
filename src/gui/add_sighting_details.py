@@ -1,7 +1,6 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFormLayout, QComboBox
 
-from src.gui.wildbook_util import setPixmapFromImage, fetchImage
-from wildbook_util import fetchSealDetails
+from wildbook_util import setPixmapFromImage, fetchImage, fetchSealDetails
 
 
 class SealSightingDialog(QDialog):
@@ -11,6 +10,10 @@ class SealSightingDialog(QDialog):
     def __init__(self, qaid, server_url, best_match_aid=None):
         super().__init__()
         self.setWindowTitle("Seal Sighting Details")
+
+        font = self.font()
+        font.setPointSize(18)
+        self.setFont(font)
 
         if best_match_aid:
             print("Populating form with best match details")
@@ -71,8 +74,17 @@ class SealSightingDialog(QDialog):
         done_button.clicked.connect(self.addSighting)
         button_layout.addWidget(done_button)
 
+        cancel_button = QPushButton("Delete this annotation")
+        cancel_button.clicked.connect(self.rejectSighting)
+        button_layout.addWidget(cancel_button)
+
         layout.addLayout(button_layout)
         self.setLayout(layout)
+
+    def rejectSighting(self):
+        self.sighting = {}
+        self.reject()
+        self.hide()
 
     def addSighting(self):
         name = self.name_edit.text()

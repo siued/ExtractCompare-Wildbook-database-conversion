@@ -52,7 +52,6 @@
 - shares same API, but runs as a docker image and has a web UI
 - exported database to excel for easier access
 - figured out wildbook image workflow
-- todo: seal species not supported, have to classify as zebra_grevys
 
 **16.5**
 - got underway, started uploading images to wildbook
@@ -217,3 +216,15 @@
 
 **18.6**
 - edited readme's to represent changes
+
+**21.6**
+- visited seal centre, deployed app
+- adding feedback from seal centre
+- export to excel
+- better error messages
+- crash logs
+- bigger font
+- match lowercase sightings
+- add old name to sighting view
+- add option to delete an annotation if it's badly detected
+- removed popup asking for port, it's set to 8081

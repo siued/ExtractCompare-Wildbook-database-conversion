@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QFileDialog
 
 import docker_util
 from add_sighting_details import SealSightingDialog
-from confirm import ConfirmDialog
+from confirm_match import ConfirmDialog
 from wildbook_util import get_uuids
 
 
@@ -50,67 +50,71 @@ def uploadImages(server_url):
     # Perform image upload and recognition tasks
     image_urls = selectImages()
     sightings = []
-    if image_urls:
-        try:
-            gids = []
-            for url in image_urls:
-                gids.append(uploadImage(server_url, url))
+    if not image_urls:
+        return []
 
-            # returns zipped list: [gid, [aid]]
-            aids_list = detectImage(server_url, gids)
+    try:
+        gids = []
+        for url in image_urls:
+            gids.append(uploadImage(server_url, url))
 
-            # in images where no annot was detected, add a full-picture annotation
-            undetected_gid_list = [gid for gid, aids in aids_list if not aids]
-            aids_list = [(gid, aids) for gid, aids in aids_list if aids]
-            if undetected_gid_list:
-                aids_list += add_annots_undetected_images(undetected_gid_list, server_url)
+        # returns zipped list: [gid, [aid]]
+        aids_list = detectImage(server_url, gids)
 
-            # do the matching in one call to make it faster
-            list_to_match = [aid for gid, aids in aids_list for aid in aids]
-            matches = matchImage(server_url, list_to_match)
+        # in images where no annot was detected, add a full-picture annotation
+        undetected_gid_list = [gid for gid, aids in aids_list if not aids]
+        aids_list = [(gid, aids) for gid, aids in aids_list if aids]
+        if undetected_gid_list:
+            aids_list += add_annots_undetected_images(undetected_gid_list, server_url)
 
-            print('Matches found: ' + str(matches))
+        # do the matching in one call to make it faster
+        list_to_match = [aid for gid, aids in aids_list for aid in aids]
+        matches = matchImage(server_url, list_to_match)
 
-            for match in matches:
-                confirmed = False
-                confirmed_match_aid = None
-                # check if any matches were found
-                if match['daid_list']:
-                    qaid = match['qaid']
-                    daid_list = match['daid_list']
-                    score_list = match['score_list']
-                    best_match_index = score_list.index(max(score_list))
-                    print('qaid: ' + str(qaid) + ', best match: ' + str(daid_list[best_match_index]) +
-                          ', score: ' + str(max(score_list)))
-                    best_match_aid = daid_list[best_match_index]
-                    try:
-                        confirm_dialog = ConfirmDialog(qaid, best_match_aid, max(score_list), server_url)
-                    except Exception as e:
-                        print(e)
-                        continue
-                    confirmed = confirm_dialog.exec_()
-                    print('Match confirmed' if confirmed else 'Match rejected')
-                    if confirmed:
-                        sighting_dialog = SealSightingDialog(qaid, server_url, best_match_aid)
-                        confirmed_match_aid = best_match_aid
-                    else:
-                        sighting_dialog = SealSightingDialog(qaid, server_url)
-                else:
-                    print(f'No matches found for aid {match["qaid"]}.')
-                    sighting_dialog = SealSightingDialog(match["qaid"], server_url)
-                sighting_dialog.exec_()
-                sighting = sighting_dialog.getSighting()
+        print('Matches found: ' + str(matches))
+
+        for match in matches:
+            confirmed = False
+            confirmed_match_aid = None
+            # check if any matches were found
+            if match['daid_list']:
+                qaid = match['qaid']
+                daid_list = match['daid_list']
+                score_list = match['score_list']
+                best_match_index = score_list.index(max(score_list))
+                print('qaid: ' + str(qaid) + ', best match: ' + str(daid_list[best_match_index]) +
+                      ', score: ' + str(max(score_list)))
+                best_match_aid = daid_list[best_match_index]
+                try:
+                    confirm_dialog = ConfirmDialog(qaid, best_match_aid, max(score_list), server_url)
+                except Exception as e:
+                    print(e)
+                    continue
+                confirmed = confirm_dialog.exec_()
+                print('Match confirmed' if confirmed else 'Match rejected')
                 if confirmed:
-                    sighting['confirmed_aid'] = confirmed_match_aid
-                sightings.append(sighting)
-            for sighting in sightings:
-                sighting['image'] = 'yes'
-            return sightings
+                    sighting_dialog = SealSightingDialog(qaid, server_url, best_match_aid)
+                    confirmed_match_aid = best_match_aid
+                else:
+                    sighting_dialog = SealSightingDialog(qaid, server_url)
+            else:
+                print(f'No matches found for aid {match["qaid"]}.')
+                sighting_dialog = SealSightingDialog(match["qaid"], server_url)
+            sighting_dialog.exec_()
+            sighting = sighting_dialog.getSighting()
+            if not sighting:
+                continue
+            if confirmed:
+                sighting['confirmed_aid'] = confirmed_match_aid
+            sightings.append(sighting)
+        for sighting in sightings:
+            sighting['image'] = 'yes'
+        return sightings
 
-        except requests.exceptions.RequestException as e:
-            print(e)
-            print("An error occurred during API requests.")
-            return []
+    except requests.exceptions.RequestException as e:
+        print(e)
+        print("An error occurred during API requests.")
+        return []
 
 
 def selectImages():

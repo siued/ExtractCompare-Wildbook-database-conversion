@@ -4,8 +4,7 @@ from tkinter import Tk
 from tkinter.filedialog import askdirectory
 import requests
 
-# TODO: change
-container_name = 'wildbook-ia-last-chance'
+container_name = 'wildbook-ia'
 
 
 def check_docker_running():
@@ -50,7 +49,7 @@ def ensure_wbia_container(client, port):
         print('Creating container...')
         db_path = select_folder("Select the folder with an existing database or where you would like a new "
                                 "database to be created")
-        volumes = {db_path: {'bind': '/data/docker/', 'mode': 'rw'}}
+        volumes = {db_path: {'bind': '/data/db/', 'mode': 'rw'}}
         # set max memory to 4GB, default is not enough
         client.containers.run('wildme/wbia', name=container_name, ports={'5000/tcp': port}, detach=True,
                               mem_limit='4g', volumes=volumes)

@@ -9,6 +9,11 @@ class ViewSightingsDialog(QDialog):
 
     def __init__(self, server_url):
         super().__init__()
+
+        font = self.font()
+        font.setPointSize(18)
+        self.setFont(font)
+
         self.server_url = server_url
         self.setWindowTitle("Sightings")
         self.resize(800, 800)
@@ -25,7 +30,7 @@ class ViewSightingsDialog(QDialog):
         layout.addWidget(self.refresh_button)
 
         self.sightingsTable = QTableWidget()
-        headers = ["Name", "Date", "Location", "Comments", "Photo",  "With pup", "Age"]
+        headers = ["Name", "Old Name", "Date", "Location", "Age", "Photo",  "With pup", "Comments"]
         self.sightingsTable.setColumnCount(len(headers))
         self.sightingsTable.setRowCount(0)
 
@@ -39,16 +44,18 @@ class ViewSightingsDialog(QDialog):
         self.setLayout(layout)
 
     def updateSightingsTable(self):
+        print("Updating sightings table")
         name = self.name_input.text()
         sightings = get_sightings_from_name(name, self.server_url)
         self.sightingsTable.setRowCount(len(sightings))
         for i, sighting in enumerate(sightings):
             self.sightingsTable.setItem(i, 0, QTableWidgetItem(sighting["name"]))
-            self.sightingsTable.setItem(i, 1, QTableWidgetItem(sighting["date"]))
-            self.sightingsTable.setItem(i, 2, QTableWidgetItem(sighting["location"]))
-            self.sightingsTable.setItem(i, 3, QTableWidgetItem(sighting["comments"]))
-            self.sightingsTable.setItem(i, 4, QTableWidgetItem(sighting["with_photo"]))
-            self.sightingsTable.setItem(i, 5, QTableWidgetItem(sighting["with_pup"]))
-            self.sightingsTable.setItem(i, 6, QTableWidgetItem(sighting["age"]))
+            self.sightingsTable.setItem(i, 1, QTableWidgetItem(sighting["old_name"]))
+            self.sightingsTable.setItem(i, 2, QTableWidgetItem(sighting["date"]))
+            self.sightingsTable.setItem(i, 3, QTableWidgetItem(sighting["location"]))
+            self.sightingsTable.setItem(i, 4, QTableWidgetItem(sighting["age"]))
+            self.sightingsTable.setItem(i, 5, QTableWidgetItem(sighting["with_photo"]))
+            self.sightingsTable.setItem(i, 6, QTableWidgetItem(sighting["with_pup"]))
+            self.sightingsTable.setItem(i, 7, QTableWidgetItem(sighting["comments"]))
         self.sightingsTable.resizeColumnsToContents()
         self.sightingsTable.resizeRowsToContents()
