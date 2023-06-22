@@ -228,3 +228,7 @@
 - add old name to sighting view
 - add option to delete an annotation if it's badly detected
 - removed popup asking for port, it's set to 8081
+
+**22.6**
+- couple small changes to gui README
+- finishing thesis with the feedback and other info from the visit

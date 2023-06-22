@@ -29,6 +29,9 @@ From testing, anything above 0.5 has a good chance of being a match, however you
 
 If for any reason you wish to change the details of an already uploaded picture, you can do so by simply uploading it again. Wildbook will recognize that the image is already in the database and won't make a duplicate. It will run the matching algorithm again and allow you to fill the details in again. 
 
+##  Export to Excel
+If you wish to export all the sightings to Excel,  click the "Export to Excel" button. This will create a file called ```sightings.xls``` in the same directory as the executable. **If the file already exists, it will be overwritten!**
+
 ## Using Wildbook
 The Wildbook web UI can be accessed at http://localhost:8081. It can be used to view the database. However, due to lack of granular control over the upload process, I have created an app which will let you upload new pictures and  match them against the existing Wildbook database.
 The app can be found in the gui folder of this repository, where you will find the executable, source code and instructions.
@@ -37,4 +40,4 @@ The app can be found in the gui folder of this repository, where you will find t
 If you wish to make a copy of the wildbook database for any reason, you can do so by simply making a copy of the folder on your computer where the database is stored. If, for any reason, you created the Wildbook container without a mount (if you followed the instructions in db_conversion,  this is not the case) and you want to download the database, follow the instructions in ```database_save.md```
 
 ## Contact
-If you have any questions, anything is not working, or you would like to report a bug, please create an issue in this GitHub repository and I will get back to you when possible.
+If you have any questions, anything is not working, or you would like to report a bug, please create an issue in this GitHub repository and I will get back to you when possible. If the application crashes, a log file will be created in the same directory as the executable. Please attach this log file to the issue.
