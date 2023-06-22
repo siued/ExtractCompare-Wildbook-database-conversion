@@ -6,6 +6,7 @@ This app takes one or more databases created with the ExtractCompare (EC) tool a
 1. An ExtractCompare database
 2. A wildbook-ia server (instructions on how to set up later)
 3. Docker (instructions later)
+4. The executable (download from /src/db_conversion/dist folder)
 
 ## The database
 The EC database is a Microsoft Access database. If you are using ExtractCompare, you should know where it is. Alternatively, you can open it with MS Access and find the path to it in the lower left corner as 'path to local files'. 
@@ -42,7 +43,7 @@ If an error is printed saying the docker daemon isn't running, make sure that Do
 
 ## Converting your existing ExtractCompare database to Wildbook
 Once you have your database exported to Excel and your Wildbook server running, you can start the conversion process.
-1. Download the executable or the source code from this repository. If you downloaded the source code, you will need to install the dependencies listed in requirements.txt. For a guide on how to do this, search the internet on how to run a python project.
+1. Download the executable (in /dist folder) or the source code from this repository. If you downloaded the source code, you will need to install the dependencies listed in requirements.txt. For a guide on how to do this, search the internet on how to run a python project.
     - If you are using the source code, you can edit the code to change the behavior, if needed. If you don't need to change anything, use the executable. 
     - If you are using the source code, refer to the Wildbook terminology section in this document to understand the code better. 
     - To run the source code you will need a Python interpreter. 

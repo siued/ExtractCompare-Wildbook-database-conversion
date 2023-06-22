@@ -232,3 +232,4 @@
 **22.6**
 - couple small changes to gui README
 - finishing thesis with the feedback and other info from the visit
+- compiled db_conversion and gui into executables

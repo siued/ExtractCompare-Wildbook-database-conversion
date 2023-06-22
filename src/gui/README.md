@@ -3,7 +3,7 @@
 This app is a simple GUI for the Wildbook API. It allows the user to add seal sightings with or without images and match them against the existing Wildbook database. There is an option to view past sightings of a specific seal. There is also an option to change a seal's name or gender. 
 
 ## Requirements
-- The executable
+- The executable (download it from the src/gui/dist folder)
 - A running Wildbook server
 - Docker
 - a sightings.json file in the same directory as the executable (if there isn't one, one will be created) 
