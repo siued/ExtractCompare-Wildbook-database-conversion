@@ -1,0 +1,16 @@
+419 correct
+
+304 wrong
+
+out of the wrong ones:
+77 manually reviewed
+
+66 correct
+11 wrong - 10 of those under 0.3 score
+
+that is 86% correct, 13% wrong under 0.3, 1% wrong over 0.3
+
+that means 261 correct, 40 wrong under 0.3, 3 wrong over 0.3
+
+which gives a total of:
+0.94 accuracy

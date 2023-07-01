@@ -36,8 +36,12 @@ class ConfirmDialog(QDialog):
 
             note = get_comments([best_match], server_url)[0]
             note = json.loads(note)
-            comment_label = QLabel(f'Name: {note["id"]}, date: {note["date"]}, location: {note["location"]}, '
-                                   f'comments: {note["comments"]}')
+            comment_label = QLabel(f'Name: {note["id"]}, '
+                                   f'age: {note["age"]}, '
+                                   f'date: {note["date"]}, '
+                                   f'location: {note["location"]}, '
+                                   f'comments: {note["comments"]}'
+                                   )
             layout.addWidget(comment_label)
         else:
             raise Exception("Could not fetch images for confirm dialog")

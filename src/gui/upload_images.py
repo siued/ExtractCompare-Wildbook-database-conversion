@@ -5,6 +5,7 @@ import docker_util
 from add_sighting_details import SealSightingDialog
 from confirm_match import ConfirmDialog
 from wildbook_util import get_uuids
+import os
 
 
 def add_annots_undetected_images(gid_list, server_url):
@@ -55,8 +56,11 @@ def uploadImages(server_url):
 
     try:
         gids = []
-        for url in image_urls:
-            gids.append(uploadImage(server_url, url))
+        for image_url in image_urls:
+            if not os.path.isdir(image_url):
+                gids.append(uploadImage(server_url, image_url))
+            else:
+                print(f'Skipping {image_url} because it is a directory.')
 
         # returns zipped list: [gid, [aid]]
         aids_list = detectImage(server_url, gids)

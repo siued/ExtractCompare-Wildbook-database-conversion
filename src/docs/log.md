@@ -233,3 +233,14 @@
 - couple small changes to gui README
 - finishing thesis with the feedback and other info from the visit
 - compiled db_conversion and gui into executables
+
+**30.6**
+- final presentation at the Bsc symposium
+
+**1.7**
+- added check so pictures upload correctly
+- clarified some things to Bea over email
+- adding an accuracy f-score measure to thesis at request of supervisor
+- added age to confirm dialog to make distinguishing bad matches easier
+- recompiled app
+- finished writing thesis
